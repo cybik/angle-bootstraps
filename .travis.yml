@@ -29,3 +29,7 @@ matrix:
 
 script:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ./buildstrap-${NATURE}.sh; fi
+
+branches:
+  only:
+    - master
