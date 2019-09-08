@@ -3,7 +3,7 @@ image: ubuntu:18.04
 debug:
   stage: build
   before_script:
-    - apt update && apt -y install git curl wget python sudo lsb-release ninja-build
+    - ./prep-gitlab.sh
   script:
     - ./buildstrap-Debug.sh
   artifacts:
@@ -14,7 +14,7 @@ debug:
 release:
   stage: build
   before_script:
-    - apt update && apt -y install git curl wget python sudo lsb-release ninja-build
+    - ./prep-gitlab.sh
   script:
     - ./buildstrap-Release.sh
   artifacts:
