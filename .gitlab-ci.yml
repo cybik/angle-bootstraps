@@ -8,8 +8,8 @@ debug:
     - ./buildstrap-Debug.sh
   artifacts:
     paths:
-      - angle/out/Debug/libGLES*.so
-      - angle/out/Debug/libEGL.so
+      - angle/out/Debug/lib*.so
+      - angle/out/Debug/args.gn
 
 release:
   stage: build
@@ -19,5 +19,5 @@ release:
     - ./buildstrap-Release.sh
   artifacts:
     paths:
-      - angle/out/Release/libGLES*.so
-      - angle/out/Release/libEGL.so
+      - angle/out/Release/lib*.so
+      - angle/out/Release/args.gn
