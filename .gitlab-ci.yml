@@ -1,0 +1,23 @@
+image: ubuntu:18.04
+
+debug:
+  stage: build
+  before_script:
+    - apt update && apt -y install git curl wget python sudo lsb-release
+  script:
+    - ./bootstrap-debug.sh
+  artifacts:
+    paths:
+      - angle/out/Debug/libGLES*.so
+      - angle/out/Debug/libEGL.so
+
+release:
+  stage: build
+  before_script:
+    - apt update && apt -y install git curl wget python sudo lsb-release
+  script:
+    - ./bootstrap-release.sh
+  artifacts:
+    paths:
+      - angle/out/Release/libGLES*.so
+      - angle/out/Release/libEGL.so
