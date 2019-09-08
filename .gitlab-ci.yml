@@ -1,4 +1,4 @@
-image: ubuntu:18.04
+image: cybik/anglestrap:latest
 
 stages:
   - build
