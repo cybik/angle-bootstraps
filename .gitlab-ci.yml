@@ -6,7 +6,7 @@ debug:
     - apt update && apt -y install git curl wget python sudo lsb-release ninja-build
   script:
     - ./bootstrap-debug.sh
-    - ninja -C out/Debug
+    - cd angle && ninja -C out/Debug
   artifacts:
     paths:
       - angle/out/Debug/libGLES*.so
@@ -18,7 +18,7 @@ release:
     - apt update && apt -y install git curl wget python sudo lsb-release ninja-build
   script:
     - ./bootstrap-release.sh
-    - ninja -C out/Release
+    - cd angle && ninja -C out/Release
   artifacts:
     paths:
       - angle/out/Release/libGLES*.so

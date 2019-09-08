@@ -22,4 +22,4 @@ before_install:
 
 script:
 #  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then echo "Nope right now"; fi
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ./bootstrap-debug.sh; ninja -C out/Debug; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ./bootstrap-debug.sh; cd angle; ninja -C out/Debug; fi
