@@ -1,11 +1,34 @@
 image: ubuntu:18.04
 
-debug:
-  stage: build
+stages:
+  - prep
+  - build
+
+prep:
+  stage: prep
   before_script:
     - ./prep-gitlab.sh
   script:
-    - ./buildstrap-Debug.sh
+    - ./bootstrap.sh
+  cache:
+    key: angle
+    paths:
+      - angle
+
+
+debug:
+  stage: build
+  cache:
+    key: angle
+    paths:
+      - angle
+    policy: pull
+  variables:
+    COMPILE_MODE: Debug
+  before_script:
+    - ./prep-gitlab.sh
+  script:
+    - ./confstrap.sh ${COMPILE_MODE}; ./makestrap.sh ${COMPILE_MODE};
   artifacts:
     paths:
       - angle/out/Debug/lib*.so
@@ -13,10 +36,17 @@ debug:
 
 release:
   stage: build
+  cache:
+    key: angle
+    paths:
+      - angle
+    policy: pull
+  variables:
+    COMPILE_MODE: Release
   before_script:
     - ./prep-gitlab.sh
   script:
-    - ./buildstrap-Release.sh
+    - ./confstrap.sh ${COMPILE_MODE}; ./makestrap.sh ${COMPILE_MODE};
   artifacts:
     paths:
       - angle/out/Release/lib*.so
