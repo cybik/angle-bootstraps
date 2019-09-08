@@ -10,11 +10,6 @@ env:
   - NATURE=Debug
   - NATURE=Release
 
-matrix:
-  include:
-    - env: NATURE=Debug
-    - env: NATURE=Release
-
 addons:
   apt:
     packages:
