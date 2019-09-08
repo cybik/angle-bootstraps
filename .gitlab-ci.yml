@@ -12,6 +12,7 @@ prep:
     - ./bootstrap.sh
   cache:
     key: angle
+    policy: push
     paths:
       - angle
 
@@ -20,9 +21,9 @@ debug:
   stage: build
   cache:
     key: angle
+    policy: pull
     paths:
       - angle
-    policy: pull
   variables:
     COMPILE_MODE: Debug
   before_script:
@@ -38,9 +39,9 @@ release:
   stage: build
   cache:
     key: angle
+    policy: pull
     paths:
       - angle
-    policy: pull
   variables:
     COMPILE_MODE: Release
   before_script:
