@@ -5,8 +5,7 @@ debug:
   before_script:
     - apt update && apt -y install git curl wget python sudo lsb-release ninja-build
   script:
-    - ./bootstrap-debug.sh
-    - cd angle && ninja -C out/Debug
+    - ./buildstrap-Debug.sh
   artifacts:
     paths:
       - angle/out/Debug/libGLES*.so
@@ -17,8 +16,7 @@ release:
   before_script:
     - apt update && apt -y install git curl wget python sudo lsb-release ninja-build
   script:
-    - ./bootstrap-release.sh
-    - cd angle && ninja -C out/Release
+    - ./buildstrap-Release.sh
   artifacts:
     paths:
       - angle/out/Release/libGLES*.so
