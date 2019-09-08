@@ -1,15 +1,9 @@
 language: cpp
 os:
   - linux
+  - osx
+
 dist: bionic
-
-compiler:
-  - gcc
-
-env:
-  - NATURE=Debug
-  - NATURE=Release
-
 addons:
   apt:
     packages:
@@ -20,6 +14,22 @@ addons:
       - sudo
       - lsb-release
       - ninja-build
+compiler:
+  - gcc
+  - clang
+
+env: 
+  - NATURE=Debug
+  - NATURE=Release
+
+matrix:
+  exclude:
+    - os: osx
+      compiler: gcc 
 
 script:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ./buildstrap-${NATURE}.sh; fi
+
+branches:
+  only:
+    - master
