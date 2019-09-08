@@ -1,0 +1,27 @@
+language: cpp
+os:
+  - linux
+#  - osx
+dist: bionic
+
+compiler:
+  - gcc
+#  - clang
+
+addons:
+  apt:
+    packages:
+      - git
+      - curl
+      - wget
+      - python
+      - sudo
+      - lsb-release
+
+before_install:
+#  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then echo "Nope right now"; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then apt update && apt -y install git curl wget python sudo lsb-release; fi
+
+script:
+#  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then echo "Nope right now"; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ./bootstrap-debug.sh; fi

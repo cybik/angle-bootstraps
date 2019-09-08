@@ -8,4 +8,9 @@ export PATH=$DEPOT_TOOLS:$PATH
 cd angle
 scripts/bootstrap.py
 gclient sync
+
+# tzdata override
+ln -fs /usr/share/zoneinfo/America/Los_Angeles /etc/localtime
+DEBIAN_FRONTEND=noninteractivee apt -y install tzdata
+
 sudo ./build/install-build-deps.sh
