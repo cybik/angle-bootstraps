@@ -3,7 +3,7 @@ image: ubuntu:18.04
 debug:
   stage: build
   before_script:
-    - apt update && apt -y install git curl wget python sudo lsb-release
+    - apt update && apt -y install git curl wget python sudo lsb-release ninja-build
   script:
     - ./bootstrap-debug.sh
     - ninja -C out/Debug
@@ -15,7 +15,7 @@ debug:
 release:
   stage: build
   before_script:
-    - apt update && apt -y install git curl wget python sudo lsb-release
+    - apt update && apt -y install git curl wget python sudo lsb-release ninja-build
   script:
     - ./bootstrap-release.sh
     - ninja -C out/Release
