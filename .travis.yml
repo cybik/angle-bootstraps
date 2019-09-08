@@ -15,6 +15,7 @@ addons:
       - python
       - sudo
       - lsb-release
+      - ninja-build
 
 before_install:
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo ln -fs /usr/share/zoneinfo/America/Los_Angeles /etc/localtime; sudo bash -c 'export DEBIAN_FRONTEND=noninteractive; apt -y install tzdata;'; fi
