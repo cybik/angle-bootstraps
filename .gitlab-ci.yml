@@ -23,7 +23,7 @@ release:
   before_script:
     - ./prep-gitlab.sh
   script:
-    - ./confstrap.sh ${COMPILE_MODE};
+    - ./buildstrap.sh ${COMPILE_MODE};
   artifacts:
     paths:
       - angle/out/Release/lib*.so
