@@ -17,9 +17,8 @@ addons:
       - lsb-release
       - ninja-build
 
-before_install:
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo bash -c 'ln -fs /usr/share/zoneinfo/America/Los_Angeles /etc/localtime; export DEBIAN_FRONTEND=noninteractive; apt -y install tzdata;'; fi
-
 script:
 #  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then echo "Nope right now"; fi
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ./bootstrap-debug.sh; cd angle; ninja -C out/Debug; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ./bootstrap-debug.sh; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then ls; ls angle; ls angle/out; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then bash -c 'cd angle; ninja -C out/Debug;' fi
