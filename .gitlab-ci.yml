@@ -3,28 +3,22 @@ image: cybik/anglestrap:latest
 stages:
   - build
 
-debug:
+.build_def: &build_definition
   stage: build
-  variables:
-    COMPILE_MODE: Debug
-  before_script:
-    - ./prep-gitlab.sh
-  script:
-    - ./buildstrap.sh ${COMPILE_MODE};
   artifacts:
     paths:
-      - angle/out/Debug/lib*.so
-      - angle/out/Debug/args.gn
+      - angle/out/*/lib*.so
+      - angle/out/*/args.gn
+  before_script:
+    - ./prep-gitlab.sh
+  script: |
+    echo "Buildstrapping for ${CI_JOB_NAME}";
+    ./buildstrap.sh ${CI_JOB_NAME};
 
-release:
-  stage: build
-  variables:
-    COMPILE_MODE: Release
-  before_script:
-    - ./prep-gitlab.sh
-  script:
-    - ./buildstrap.sh ${COMPILE_MODE};
-  artifacts:
-    paths:
-      - angle/out/Release/lib*.so
-      - angle/out/Release/args.gn
+# the job names MUST MATCH THE ANGLE BUILD TYPES.
+#  You have been SO WARNED.
+Debug:
+  <<: *build_definition
+
+Release:
+  <<: *build_definition
