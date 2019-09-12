@@ -1,0 +1,16 @@
+name: CI
+
+on: [push]
+
+jobs:
+  build-linux:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-18.04]
+    steps:
+    - uses: actions/checkout@v1
+    - name: Environment bootstrap
+      run: ./prep-gitlab.sh
+    - name: Run a multi-line script
+      run: ./buildstrap-Debug.sh
