@@ -1,0 +1,29 @@
+name: cronjob
+
+on:
+  schedule:
+  - cron: "0 0 * * *"
+
+jobs:
+  build-linux:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, ubuntu-18.04]
+    steps:
+    - name: Check out source
+      uses: actions/checkout@v1
+    - name: Environment bootstrap
+      run: sudo ./prep-gitlab.sh
+    - name: Build ANGLE
+      run: ./buildstrap-Release.sh
+    - name: Compress artifacts
+      run: |
+        cd angle/out/Release;
+        tar -cf ../Release.tar *.so;
+        gzip ../Release.tar;
+    - name: Archive artifacts
+      uses: actions/upload-artifact@master
+      with:
+        name: Angle Libraries
+        path: angle/out/Release.tar.gz
