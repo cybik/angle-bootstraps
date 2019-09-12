@@ -12,5 +12,5 @@ jobs:
     - uses: actions/checkout@v1
     - name: Environment bootstrap
       run: sudo ./prep-gitlab.sh
-    - name: Run a multi-line script
+    - name: Build ANGLE
       run: ./buildstrap-Debug.sh
