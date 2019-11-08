@@ -20,22 +20,22 @@ jobs:
       uses: actions/checkout@v1
     - name: Environment bootstrap
       run: sudo ./prep-gitlab.sh
-    - name: Build ANGLE
-      run: |
-        chmod 755 ./buildstrap-${{ matrix.variant }}-arg.sh;
-        ./buildstrap-${{ matrix.variant }}-arg.sh ${{ matrix.target }}
-    - name: Compress artifacts
-      run: |
-        cd angle/out/${{ matrix.variant }};
-        tar -cf ../${{ matrix.variant }}.tar *.so;
-        gzip ../${{ matrix.variant }}.tar;
-    - name: Archive ANGLE artifacts
-      uses: actions/upload-artifact@master
-      with:
-        name: Angle ${{ matrix.variant }} Libraries for ${{ matrix.target }} on ${{ matrix.os }}
-        path: angle/out/${{ matrix.variant }}.tar.gz
-    - name: Archive ANGLE configuration
+    - name: Bootstrap ${{ matrix.variant }} ANGLE environment for ${{ matrix.target }} on ${{ matrix.os }}  
+      run: ./bootstrap-moded.sh ${{ matrix.variant }} ${{ matrix.target }}
+    - name: Archive ${{ matrix.variant }} ANGLE configuration for ${{ matrix.target }} on ${{ matrix.os }}  
       uses: actions/upload-artifact@master
       with:
         name: Configuration of ${{ matrix.variant }} for ${{ matrix.target }} on ${{ matrix.os }}  
         path: angle/out/${{ matrix.variant }}/args.gn
+    - name: Build ANGLE ${{ matrix.variant }} for ${{ matrix.target }} on ${{ matrix.os }}  
+      run: ./makestrap.sh ${{ matrix.variant }}
+    - name: Compress ${{ matrix.variant }} artifacts for ${{ matrix.target }} on ${{ matrix.os }}  
+      run: |
+        cd angle/out/${{ matrix.variant }};
+        tar -cf ../${{ matrix.variant }}.tar *.so;
+        gzip ../${{ matrix.variant }}.tar;
+    - name: Archive ANGLE ${{ matrix.variant }} Build Artifacts for ${{ matrix.target }} on ${{ matrix.os }}  
+      uses: actions/upload-artifact@master
+      with:
+        name: Angle ${{ matrix.variant }} Libraries for ${{ matrix.target }} on ${{ matrix.os }}
+        path: angle/out/${{ matrix.variant }}.tar.gz
