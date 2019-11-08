@@ -12,7 +12,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, ubuntu-18.04]
         target: [ggp, linux]
-        variant: [Debug, Release]
+        variant: [Release]
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.target }} - ${{ matrix.variant }} on ${{ matrix.os }}
     steps:
@@ -32,10 +32,10 @@ jobs:
     - name: Archive ANGLE artifacts
       uses: actions/upload-artifact@master
       with:
-        name: Angle Libraries
+        name: Angle ${{ matrix.variant }} Libraries for ${{ matrix.target }} on ${{ matrix.os }}
         path: angle/out/${{ matrix.variant }}.tar.gz
     - name: Archive ANGLE configuration
       uses: actions/upload-artifact@master
       with:
-        name: Configuration
+        name: Configuration of ${{ matrix.variant }} for ${{ matrix.target }} on ${{ matrix.os }}  
         path: angle/out/${{ matrix.variant }}/args.gn
