@@ -3,7 +3,7 @@ name: Release Build on Commit
 on: [push]
 
 jobs:
-  build-linux-release:
+  rls:
     strategy:
       matrix:
         os: [ubuntu-latest, ubuntu-18.04]
@@ -23,8 +23,13 @@ jobs:
         cd angle/out/Release;
         tar -cf ../Release.tar *.so;
         gzip ../Release.tar;
-    - name: Archive artifacts
+    - name: Archive ANGLE artifacts
       uses: actions/upload-artifact@master
       with:
         name: Angle Libraries
         path: angle/out/Release.tar.gz
+    - name: Archive ANGLE configuration
+      uses: actions/upload-artifact@master
+      with:
+        name: Configuration
+        path: angle/out/Release/args.gn
