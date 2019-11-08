@@ -2,4 +2,4 @@
 
 export PATH=`pwd`/depot_tools:$PATH
 ./bootstrap.sh
-./confstrap.sh ${1}
+./confstrap.sh ${1} ${2}
