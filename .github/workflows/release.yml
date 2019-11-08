@@ -1,4 +1,4 @@
-name: Release Build
+name: Matrixed Build
 
 on: 
   push:
@@ -7,13 +7,14 @@ on:
   - cron: "0 0 * * *"
 
 jobs:
-  rls:
+  main:
     strategy:
       matrix:
         os: [ubuntu-latest, ubuntu-18.04]
         target: [ggp, linux]
         variant: [Debug, Release]
     runs-on: ${{ matrix.os }}
+    name: ${{ matrix.target }} - ${{ matrix.variant }} on ${{ matrix.os }}
     steps:
     - name: Check out source
       uses: actions/checkout@v1
