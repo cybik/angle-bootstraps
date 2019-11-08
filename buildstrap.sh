@@ -1,5 +1,5 @@
 #! /bin/bash
 
-./bootstrap-${1}.sh
+./bootstrap-moded.sh ${1} ${2}
 
 ./makestrap.sh ${1}
