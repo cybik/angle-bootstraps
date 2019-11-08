@@ -4,17 +4,20 @@ on: [push]
 
 jobs:
   build-linux-release:
-    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, ubuntu-18.04]
+        target: [ggp, linux]
+    runs-on: ${{ matrix.os }}
     steps:
     - name: Check out source
       uses: actions/checkout@v1
     - name: Environment bootstrap
       run: sudo ./prep-gitlab.sh
     - name: Build ANGLE
-      run: ./buildstrap-Release.sh
+      run: |
+        chmod 755 ./buildstrap-Release-arg.sh;
+        ./buildstrap-Release-arg.sh ${{ matrix.target }}
     - name: Compress artifacts
       run: |
         cd angle/out/Release;
