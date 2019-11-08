@@ -6,8 +6,10 @@ IS_LINUX="true"
 IS_DEBUG="false"
 
 [ "${TARGET}" == "Debug" ] && IS_DEBUG="true"
-[ ! -z "${2}" ] && IS_GGP="true"
-[ ! -z "${2}" ] && IS_LINUX="false"
+if [ ! -z "${2}" ] && [ "${2}" == "ggp" ]; then
+    IS_GGP="true"
+    IS_LINUX="false"
+fi
 
 cd angle
 gn gen out/${TARGET}
