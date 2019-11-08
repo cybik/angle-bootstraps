@@ -1,4 +1,4 @@
-name: Release Build on Commit
+name: Release Build
 
 on: 
   push:
@@ -12,6 +12,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, ubuntu-18.04]
         target: [ggp, linux]
+        variant: [Debug, Release]
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out source
@@ -20,20 +21,20 @@ jobs:
       run: sudo ./prep-gitlab.sh
     - name: Build ANGLE
       run: |
-        chmod 755 ./buildstrap-Release-arg.sh;
-        ./buildstrap-Release-arg.sh ${{ matrix.target }}
+        chmod 755 ./buildstrap-${{ matrix.variant }}-arg.sh;
+        ./buildstrap-${{ matrix.variant }}-arg.sh ${{ matrix.target }}
     - name: Compress artifacts
       run: |
-        cd angle/out/Release;
-        tar -cf ../Release.tar *.so;
-        gzip ../Release.tar;
+        cd angle/out/${{ matrix.variant }};
+        tar -cf ../${{ matrix.variant }}.tar *.so;
+        gzip ../${{ matrix.variant }}.tar;
     - name: Archive ANGLE artifacts
       uses: actions/upload-artifact@master
       with:
         name: Angle Libraries
-        path: angle/out/Release.tar.gz
+        path: angle/out/${{ matrix.variant }}.tar.gz
     - name: Archive ANGLE configuration
       uses: actions/upload-artifact@master
       with:
         name: Configuration
-        path: angle/out/Release/args.gn
+        path: angle/out/${{ matrix.variant }}/args.gn
