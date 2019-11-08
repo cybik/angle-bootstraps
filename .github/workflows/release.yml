@@ -9,8 +9,9 @@ on:
 jobs:
   main:
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, ubuntu-18.04]
+        os: [ubuntu-18.04]
         target: [ggp, linux]
         variant: [Release]
     runs-on: ${{ matrix.os }}
@@ -29,13 +30,8 @@ jobs:
         path: angle/out/${{ matrix.variant }}/args.gn
     - name: Build ANGLE ${{ matrix.variant }} for ${{ matrix.target }} on ${{ matrix.os }}  
       run: ./makestrap.sh ${{ matrix.variant }}
-    - name: Compress ${{ matrix.variant }} artifacts for ${{ matrix.target }} on ${{ matrix.os }}  
-      run: |
-        cd angle/out/${{ matrix.variant }};
-        tar -cf ../${{ matrix.variant }}.tar *.so;
-        gzip ../${{ matrix.variant }}.tar;
     - name: Archive ANGLE ${{ matrix.variant }} Build Artifacts for ${{ matrix.target }} on ${{ matrix.os }}  
       uses: actions/upload-artifact@master
       with:
         name: Angle ${{ matrix.variant }} Libraries for ${{ matrix.target }} on ${{ matrix.os }}
-        path: angle/out/${{ matrix.variant }}.tar.gz
+        path: angle/out/${{ matrix.variant }}/*.so
