@@ -19,6 +19,7 @@ is_debug = $IS_DEBUG
 angle_enable_gl = false
 angle_enable_null = false
 is_ggp = $IS_GGP
+is_linux = $IS_LINUX
 EOF
 if [ ! -z "${2}" ] && [ "${2}" == "ggp" ]; then
 cat >> out/${TARGET}/args.gn << EOF
