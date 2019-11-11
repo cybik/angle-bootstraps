@@ -20,9 +20,4 @@ angle_enable_gl = false
 angle_enable_null = false
 is_ggp = $IS_GGP
 EOF
-if [ ! -z "${2}" ] && [ "${2}" == "ggp" ]; then
-cat >> out/${TARGET}/args.gn << EOF
-defines = [ "VK_USE_PLATFORM_GGP" ]
-EOF
-fi
 gn gen out/${TARGET}
