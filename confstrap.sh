@@ -22,7 +22,7 @@ is_ggp = $IS_GGP
 EOF
 if [ ! -z "${2}" ] && [ "${2}" == "ggp" ]; then
 cat >> out/${TARGET}/args.gn << EOF
-cflags_cxx = "-stdlib=libc++"
+cflags_cxx = [ "-stdlib=libc++" ]
 EOF
 fi
 gn gen out/${TARGET}
