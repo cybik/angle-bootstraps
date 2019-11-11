@@ -38,7 +38,7 @@ jobs:
       if: matrix.target == 'ggp'
       run: |
         mkdir -p angle/include/ggp_c
-        echo "typedef uint64_t GgpFrameToken; typedef uint32_t GgpStreamDescriptor;" > angle/include/ggp_c/vulkan_types.h
+        echo "typedef uint64_t GgpFrameToken; typedef uint32_t GgpStreamDescriptor; const uint32_t kGgpPrimaryStreamDescriptor = 1;" > angle/include/ggp_c/vulkan_types.h
     - name: Build ANGLE ${{ matrix.variant }} for ${{ matrix.target }} on ${{ matrix.os }}  
       run: ./makestrap.sh ${{ matrix.variant }}
     - name: Compress ${{ matrix.variant }} artifacts for ${{ matrix.target }} on ${{ matrix.os }}  
