@@ -12,18 +12,24 @@ if [ ! -z "${2}" ] && [ "${2}" == "ggp" ]; then
 fi
 
 cd angle
+gn args out/${TARGET} --list
 gn gen out/${TARGET}
 cat >> out/${TARGET}/args.gn << EOF
-target_cpu = "x64"
-is_debug = $IS_DEBUG
-angle_enable_gl = false
-angle_enable_null = false
-is_ggp = $IS_GGP
-is_linux = $IS_LINUX
+declare_args() {
+    target_cpu = "x64"
+    is_debug = $IS_DEBUG
+    angle_enable_gl = false
+    angle_enable_null = false
+    angle_enable_vulkan = true
+    is_ggp = $IS_GGP
+    is_linux = $IS_LINUX
+}
 EOF
 if [ ! -z "${2}" ] && [ "${2}" == "ggp" ]; then
 cat >> out/${TARGET}/args.gn << EOF
-cflags_cxx = [ "-stdlib=libc++" ]
+declare_args() {
+    cflags_cxx = [ "-stdlib=libc++" ]
+}
 EOF
 fi
 gn gen out/${TARGET}
