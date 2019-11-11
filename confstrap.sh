@@ -12,8 +12,8 @@ if [ ! -z "${2}" ] && [ "${2}" == "ggp" ]; then
 fi
 
 cd angle
-gn args out/${TARGET} --list
 gn gen out/${TARGET}
+gn args out/${TARGET} --list
 cat >> out/${TARGET}/args.gn << EOF
 declare_args() {
     target_cpu = "x64"
