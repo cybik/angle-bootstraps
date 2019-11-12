@@ -1,2 +1,2 @@
-#1 /bin/bash
+#! /bin/bash
 ./buildstrap.sh Debug $1
