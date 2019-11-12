@@ -23,7 +23,7 @@ is_debug = $IS_DEBUG
 angle_enable_gl = false
 angle_enable_null = false
 is_ggp = $IS_GGP
-is_linux = $IS_LINUX
+is_desktop_linux = $IS_LINUX
 EOF
 
 # Re-gen
