@@ -2,7 +2,9 @@ name: Matrixed Build
 
 on: 
   push:
-    branches: master, testWindowsBuild
+    branches: 
+      - master
+      - testWindowsBuild
   schedule:
   - cron: "0 0 * * *"
 
