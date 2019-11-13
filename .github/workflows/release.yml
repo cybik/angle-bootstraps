@@ -8,9 +8,6 @@ on:
   schedule:
     - cron: "0 0 * * *"
 
-env:
-  GIT_REPO_ANGLE_SOURCE_OF_TRUTHINESS: "git@github.com:FNA-XNA/angle-ggp.git"
-
 jobs:
   windows:
     strategy:
@@ -24,6 +21,7 @@ jobs:
       DEPOT_TOOLS_WIN_TOOLCHAIN: '0'
       DEPOT_TOOLS_METRICS: '0'
       PYTHON_HOME: ''
+      GIT_REPO_ANGLE_SOURCE_OF_TRUTHINESS: "https://github.com/FNA-XNA/angle-ggp.git"
     steps:
       - name: Check out source
         uses: actions/checkout@v1
