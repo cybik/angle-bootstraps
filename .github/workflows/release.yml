@@ -51,9 +51,6 @@ jobs:
           $env:DEPOT_TOOLS_WIN_TOOLCHAIN=0
           $env:Path = "$pwd\depot_tools;" + $env:Path
           refreshenv
-      - name: Bootstrap ${{ matrix.variant }} ANGLE environment on ${{ matrix.os }}
-        shell: pwsh
-        run: |
           cd angle
           python scripts\bootstrap.py
           refreshenv
