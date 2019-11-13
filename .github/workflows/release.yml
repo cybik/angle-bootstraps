@@ -99,6 +99,13 @@ jobs:
         with:
           name: Angle $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }}
           path: Angle.zip
+      - name: Discord message
+        uses: appleboy/discord-action@master
+        with:
+          webhook_id: ${{ secrets.DISCORD_WEBHOOK }}
+          webhook_token: ${{ secrets.DISCORD_CLIENT_SECRET }}
+          username: "GitHub sez hi"
+          message: "ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }} have been built!"
 
   main:
     strategy:
