@@ -57,7 +57,7 @@ jobs:
           cd angle
           python scripts\bootstrap.py
           refreshenv
-          gclient sync --revision=$(ANGLE_REVISION)
+          gclient sync --revision=$env:ANGLE_REVISION
       - name: Set up build projects
         shell: pwsh
         run: |
