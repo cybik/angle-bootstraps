@@ -35,9 +35,11 @@ jobs:
       - name: Discord message (1)
         shell: pwsh
         run: |
-          $body = @'{
-            "content"="Starting ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Library build job for ${{ matrix.variant }} on ${{ matrix.os }}."
-          }'@
+          $body = @'
+          {
+            "content": "Starting ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Library build job for ${{ matrix.variant }} on ${{ matrix.os }}."
+          }
+          '@
           Invoke-RestMethod -Uri ${{ secrets.DISCORD_WEBHOOK }} -ContentType "application/json" -Method Post -Body $body
       - name: Check out source
         uses: actions/checkout@v1
@@ -82,9 +84,11 @@ jobs:
       - name: Discord message (2)
         shell: pwsh
         run: |
-          $body = @'{
-            "content"="Starting build of ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }}."
-          }'@
+          $body = @'
+          {
+            "content": "Starting build of ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }}."
+          }
+          '@
           Invoke-RestMethod -Uri ${{ secrets.DISCORD_WEBHOOK }} -ContentType "application/json" -Method Post -Body $body
       - name: Build Angle
         shell: pwsh
@@ -118,9 +122,11 @@ jobs:
       - name: Discord message (3)
         shell: pwsh
         run: |
-          $body = @'{
-            "content"="ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }} have been built and deployed!"
-          }'@
+          $body = @'
+          {
+            "content": "ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }} have been built and deployed!"
+          }
+          '@
           Invoke-RestMethod -Uri ${{ secrets.DISCORD_WEBHOOK }} -ContentType "application/json" -Method Post -Body $body
 
   main:
