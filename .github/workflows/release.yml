@@ -35,7 +35,7 @@ jobs:
         run: |
           $body = @'
           {
-            "content": "Starting ANGLE ${{ matrix.cpu }}_${{ matrix.arch }} Library build job for ${{ matrix.variant }} on ${{ matrix.os }}."
+            "content": "Starting ANGLE ${{ matrix.variant }} (${{ matrix.cpu }}_${{ matrix.arch }}) job on ${{ matrix.os }}."
           }
           '@
           Invoke-RestMethod -Uri ${{ secrets.DISCORD_WEBHOOK }} -ContentType "application/json" -Method Post -Body $body
@@ -84,7 +84,7 @@ jobs:
         run: |
           $body = @'
           {
-            "content": "Starting build of ANGLE ${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }}."
+            "content": "Starting ANGLE ${{ matrix.variant }} (${{ matrix.cpu }}_${{ matrix.arch }}) build on ${{ matrix.os }}."
           }
           '@
           Invoke-RestMethod -Uri ${{ secrets.DISCORD_WEBHOOK }} -ContentType "application/json" -Method Post -Body $body
@@ -99,6 +99,15 @@ jobs:
           autoninja -C out\Build_${{ matrix.arch }} libGL
           autoninja -C out\Build_${{ matrix.arch }} libGLESv1_CM 
           autoninja -C out\Build_${{ matrix.arch }} libGLESv2
+      - name: Discord message (3)
+        shell: pwsh
+        run: |
+          $body = @'
+          {
+            "content": "ANGLE ${{ matrix.variant }} (${{ matrix.cpu }}_${{ matrix.arch }}) on ${{ matrix.os }} has been built!"
+          }
+          '@
+          Invoke-RestMethod -Uri ${{ secrets.DISCORD_WEBHOOK }} -ContentType "application/json" -Method Post -Body $body
       - name: Copy Binaries
         shell: pwsh
         run: |
@@ -117,12 +126,12 @@ jobs:
         with:
           name: Angle ${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }}
           path: Angle.zip
-      - name: Discord message (3)
+      - name: Discord message (4)
         shell: pwsh
         run: |
           $body = @'
           {
-            "content": "ANGLE ${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }} have been built and deployed!"
+            "content": "ANGLE ${{ matrix.variant }} (${{ matrix.cpu }}_${{ matrix.arch }}) on ${{ matrix.os }} :: Artifacts deployed!"
           }
           '@
           Invoke-RestMethod -Uri ${{ secrets.DISCORD_WEBHOOK }} -ContentType "application/json" -Method Post -Body $body
@@ -153,7 +162,7 @@ jobs:
         with:
           name: Configuration of ${{ matrix.variant }} for ${{ matrix.target }} on ${{ matrix.os }}  
           path: angle/out/${{ matrix.variant }}/args.gn
-      - name: Fake out the GGP headers
+      - name: Fake out GGP headers as needed
         if: matrix.target == 'ggp'
         run: echo "Moved to a script. Just keeping this BECAUSE I LIKE CONDITIONAL STEPS this is so cool"
       - name: Discord message (2)
@@ -178,3 +187,8 @@ jobs:
         with:
           name: Angle ${{ matrix.variant }} Libraries for ${{ matrix.target }} on ${{ matrix.os }}
           path: angle/out/${{ matrix.variant }}.tar.gz
+      - name: Discord message (4)
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+            --data "{ \"content\": \"ANGLE ${{ matrix.variant }} for ${{ matrix.target }} on ${{ matrix.os }} :: Artifacts deployed!\" }" \
+            ${{ secrets.DISCORD_WEBHOOK }}
