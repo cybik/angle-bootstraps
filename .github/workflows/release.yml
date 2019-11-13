@@ -33,9 +33,12 @@ jobs:
       GIT_REPO_ANGLE_SOURCE_OF_TRUTHINESS: "https://github.com/FNA-XNA/angle-ggp.git"
     steps:
       - name: Discord message (1)
-        uses: Ilshidur/action-discord@master
-        with:
-          args: "Starting ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Library build job for ${{ matrix.variant }} on ${{ matrix.os }}."
+        shell: pwsh
+        run: |
+          $body = @{
+            "content": "Starting ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Library build job for ${{ matrix.variant }} on ${{ matrix.os }}."
+          }
+          Invoke-WebRequest -UseBasicParsing ${{ secrets.DISCORD_WEBHOOK }} -ContentType "application/json" -Method POST -Body $body
       - name: Check out source
         uses: actions/checkout@v1
       - name: Fetch depot_tools
@@ -77,9 +80,12 @@ jobs:
           cd angle
           gn gen out/Build_${{ matrix.arch }} --args='is_clang=true is_debug=false use_custom_libcxx=true is_component_build=false  target_cpu=\"${{ matrix.cpu }}\"'
       - name: Discord message (2)
-        uses: Ilshidur/action-discord@master
-        with:
-          args: "Starting build of ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }}."
+        shell: pwsh
+        run: |
+          $body = @{
+            "content": "Starting build of ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }}."
+          }
+          Invoke-WebRequest -UseBasicParsing ${{ secrets.DISCORD_WEBHOOK }} -ContentType "application/json" -Method POST -Body $body
       - name: Build Angle
         shell: pwsh
         run: |
@@ -110,9 +116,12 @@ jobs:
           name: Angle $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }}
           path: Angle.zip
       - name: Discord message (3)
-        uses: Ilshidur/action-discord@master
-        with:
-          args: "ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }} have been built and deployed!"
+        shell: pwsh
+        run: |
+          $body = @{
+            "content": "ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }} have been built and deployed!"
+          }
+          Invoke-WebRequest -UseBasicParsing ${{ secrets.DISCORD_WEBHOOK }} -ContentType "application/json" -Method POST -Body $body
 
   main:
     strategy:
