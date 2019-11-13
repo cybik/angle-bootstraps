@@ -61,14 +61,14 @@ jobs:
           cd angle
           autoninja -C out\Build_64 libANGLE
           autoninja -C out\Build_64 libEGL 
-          autoninja -C out\Build_64 libGL 
+          autoninja -C out\Build_64 libGL
           autoninja -C out\Build_64 libGLESv1_CM 
-          autoninja -C out\Build_64 libGLESv2 
-          autoninja -C out\Build_32 libANGLE 
-          autoninja -C out\Build_32 libEGL 
-          autoninja -C out\Build_32 libGL 
-          autoninja -C out\Build_32 libGLESv1_CM 
-          autoninja -C out\Build_32 libGLESv2 
+          autoninja -C out\Build_64 libGLESv2
+          autoninja -C out\Build_32 libANGLE
+          autoninja -C out\Build_32 libEGL
+          autoninja -C out\Build_32 libGL
+          autoninja -C out\Build_32 libGLESv1_CM
+          autoninja -C out\Build_32 libGLESv2
       - name: Copy Binaries
         shell: pwsh
         run: |
