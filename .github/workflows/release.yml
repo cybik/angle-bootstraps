@@ -14,8 +14,16 @@ jobs:
       matrix:
         os: [windows-2019]
         variant: [Release]
+        arch: [32, 64]
+        include:
+          - os: windows-2019
+            arch: 32
+            cpu: x86
+          - os: windows-2019
+            arch: 64
+            cpu: x64
     runs-on: ${{ matrix.os }}
-    name: ${{ matrix.os }} - ${{ matrix.variant }}
+    name: ${{ matrix.variant }} on ${{ matrix.os }} ( ${{ matrix.cpu }}_${{ matrix.arch }} )
     env:
       ANGLE_REVISION: '26a92a034e0db9ae88c8b3d35046d29011c6cd6d'
       DEPOT_TOOLS_WIN_TOOLCHAIN: '0'
@@ -62,39 +70,28 @@ jobs:
           $env:DEPOT_TOOLS_WIN_TOOLCHAIN=0
           $env:Path = "$pwd\depot_tools;" + $env:Path
           cd angle
-          gn gen out/Build_32 --args='is_clang=true is_debug=false use_custom_libcxx=true is_component_build=false  target_cpu=\"x86\"'
-          gn gen out/Build_64 --args='is_clang=true is_debug=false use_custom_libcxx=true is_component_build=false  target_cpu=\"x64\"'
+          gn gen out/Build_${{ matrix.arch }} --args='is_clang=true is_debug=false use_custom_libcxx=true is_component_build=false  target_cpu=\"${{ matrix.cpu }}\"'
       - name: Build Angle
         shell: pwsh
         run: |
           $env:Path = "$pwd\depot_tools;" + $env:Path
           &("C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\Tools\VsDevCmd.bat")
           cd angle
-          autoninja -C out\Build_64 libANGLE
-          autoninja -C out\Build_64 libEGL
-          autoninja -C out\Build_64 libGL
-          autoninja -C out\Build_64 libGLESv1_CM 
-          autoninja -C out\Build_64 libGLESv2
-          autoninja -C out\Build_32 libANGLE
-          autoninja -C out\Build_32 libEGL
-          autoninja -C out\Build_32 libGL
-          autoninja -C out\Build_32 libGLESv1_CM
-          autoninja -C out\Build_32 libGLESv2
+          autoninja -C out\Build_${{ matrix.arch }} libANGLE
+          autoninja -C out\Build_${{ matrix.arch }} libEGL
+          autoninja -C out\Build_${{ matrix.arch }} libGL
+          autoninja -C out\Build_${{ matrix.arch }} libGLESv1_CM 
+          autoninja -C out\Build_${{ matrix.arch }} libGLESv2
       - name: Copy Binaries
         shell: pwsh
         run: |
-          New-Item -Name "x64" -ItemType "directory" 
-          New-Item -Name "x86" -ItemType "directory"
+          New-Item -Name "${{ matrix.cpu }}" -ItemType "directory"
           New-Item -Name "lib" -ItemType "directory"
           New-Item -Name "Binaries" -ItemType "directory"
-          Copy-Item -Path "angle\out\Build_64\*.lib" -Destination "x64" -Recurse 
-          Copy-Item -Path "angle\out\Build_64\*.dll" -Destination "x64" -Recurse 
-          Copy-Item -Path "angle\out\Build_64\*.pdb" -Destination "x64" -Recurse 
-          Copy-Item -Path "angle\out\Build_32\*.pdb" -Destination "x86" -Recurse 
-          Copy-Item -Path "angle\out\Build_32\*.lib" -Destination "x86" -Recurse 
-          Copy-Item -Path "angle\out\Build_32\*.dll" -Destination "x86" -Recurse 
-          Move-Item -Path "x64" -Destination "lib"
-          Move-Item -Path "x86" -Destination "lib"
+          Copy-Item -Path "angle\out\Build_${{ matrix.arch }}\*.lib" -Destination "${{ matrix.cpu }}" -Recurse
+          Copy-Item -Path "angle\out\Build_${{ matrix.arch }}\*.dll" -Destination "${{ matrix.cpu }}" -Recurse
+          Copy-Item -Path "angle\out\Build_${{ matrix.arch }}\*.pdb" -Destination "${{ matrix.cpu }}" -Recurse
+          Move-Item -Path "${{ matrix.cpu }}" -Destination "lib"
           Move-Item -Path "lib" -Destination "Binaries"
           Copy-Item -Path "angle\include" -Destination "Binaries" -Recurse 
           7z a ANGLE.zip Binaries\*
