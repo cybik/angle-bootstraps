@@ -37,7 +37,7 @@ jobs:
         run: |
           $body = @'
           {
-            "content": "Starting ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Library build job for ${{ matrix.variant }} on ${{ matrix.os }}."
+            "content": "Starting ANGLE ${{ matrix.cpu }}_${{ matrix.arch }} Library build job for ${{ matrix.variant }} on ${{ matrix.os }}."
           }
           '@
           Invoke-RestMethod -Uri ${{ secrets.DISCORD_WEBHOOK }} -ContentType "application/json" -Method Post -Body $body
@@ -86,7 +86,7 @@ jobs:
         run: |
           $body = @'
           {
-            "content": "Starting build of ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }}."
+            "content": "Starting build of ANGLE ${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }}."
           }
           '@
           Invoke-RestMethod -Uri ${{ secrets.DISCORD_WEBHOOK }} -ContentType "application/json" -Method Post -Body $body
@@ -117,14 +117,14 @@ jobs:
       - name: Archive ${{ matrix.variant }} ANGLE archive on ${{ matrix.os }}
         uses: actions/upload-artifact@master
         with:
-          name: Angle $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }}
+          name: Angle ${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }}
           path: Angle.zip
       - name: Discord message (3)
         shell: pwsh
         run: |
           $body = @'
           {
-            "content": "ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }} have been built and deployed!"
+            "content": "ANGLE ${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }} have been built and deployed!"
           }
           '@
           Invoke-RestMethod -Uri ${{ secrets.DISCORD_WEBHOOK }} -ContentType "application/json" -Method Post -Body $body
@@ -140,9 +140,10 @@ jobs:
     name: ${{ matrix.target }} - ${{ matrix.variant }} on ${{ matrix.os }}
     steps:
       - name: Discord message (1)
-        uses: Ilshidur/action-discord@master
-        with:
-          args: "Starting ANGLE ${{ matrix.variant }} job for ${{ matrix.target }} on ${{ matrix.os }} ."
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+            --data "{ \"content\": \"Starting ANGLE ${{ matrix.variant }} job for ${{ matrix.target }} on ${{ matrix.os }}.\" }" \
+            ${{ secrets.DISCORD_WEBHOOK }}
       - name: Check out source
         uses: actions/checkout@v1
       - name: Environment bootstrap
@@ -158,15 +159,17 @@ jobs:
         if: matrix.target == 'ggp'
         run: echo "Moved to a script. Just keeping this BECAUSE I LIKE CONDITIONAL STEPS this is so cool"
       - name: Discord message (2)
-        uses: Ilshidur/action-discord@master
-        with:
-          args: "Starting ANGLE ${{ matrix.variant }} build for ${{ matrix.target }} on ${{ matrix.os }}."
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+            --data "{ \"content\": \"Starting ANGLE ${{ matrix.variant }} build for ${{ matrix.target }} on ${{ matrix.os }}.\" }" \
+            ${{ secrets.DISCORD_WEBHOOK }}
       - name: Build ANGLE ${{ matrix.variant }} for ${{ matrix.target }} on ${{ matrix.os }}  
         run: ./makestrap.sh ${{ matrix.variant }}
       - name: Discord message (3)
-        uses: Ilshidur/action-discord@master
-        with:
-          args: "ANGLE ${{ matrix.variant }} for ${{ matrix.target }} on ${{ matrix.os }} has been built!"
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+            --data "{ \"content\": \"ANGLE ${{ matrix.variant }} for ${{ matrix.target }} on ${{ matrix.os }} has been built!\" }" \
+            ${{ secrets.DISCORD_WEBHOOK }}
       - name: Compress ${{ matrix.variant }} artifacts for ${{ matrix.target }} on ${{ matrix.os }}  
         run: |
           cd angle/out/${{ matrix.variant }};
