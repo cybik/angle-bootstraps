@@ -2,13 +2,104 @@ name: Matrixed Build
 
 on: 
   push:
-    branches:
+    branches: 
       - master
-      - testWindowsBranch
   schedule:
-  - cron: "0 0 * * *"
+    - cron: "0 0 * * *"
 
 jobs:
+  windows:
+    strategy:
+      matrix:
+        os: [windows-2019]
+        variant: [Release]
+        arch: [32, 64]
+        include:
+          - os: windows-2019
+            arch: 32
+            cpu: x86
+          - os: windows-2019
+            arch: 64
+            cpu: x64
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.variant }} on ${{ matrix.os }} ( ${{ matrix.cpu }}_${{ matrix.arch }} )
+    env:
+      ANGLE_REVISION: '26a92a034e0db9ae88c8b3d35046d29011c6cd6d'
+      DEPOT_TOOLS_WIN_TOOLCHAIN: '0'
+      DEPOT_TOOLS_METRICS: '0'
+      PYTHON_HOME: ''
+      GIT_REPO_ANGLE_SOURCE_OF_TRUTHINESS: "https://github.com/FNA-XNA/angle-ggp.git"
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v1
+      - name: Fetch depot_tools
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://storage.googleapis.com/chrome-infra/depot_tools.zip" -OutFile depot_tools.zip
+          &7z x depot_tools.zip -odepot_tools
+          Remove-Item depot_tools.zip
+      - name: Config depot_tools
+        shell: pwsh
+        run: |
+            $env:DEPOT_TOOLS_WIN_TOOLCHAIN=0
+            $env:Path = "$pwd\depot_tools;" + $env:Path
+            cd depot_tools
+            ./update_depot_tools.bat
+            dir
+      - name: Get Angle Sauce
+        shell: pwsh
+        run: |
+          del C:\ProgramData\Chocolatey\bin\pytho*.exe
+          git clone $env:GIT_REPO_ANGLE_SOURCE_OF_TRUTHINESS angle
+          cd angle
+      - name: Bootstrap ${{ matrix.variant }} ANGLE dependencies on ${{ matrix.os }}
+        shell: pwsh
+        run: |
+          $env:DEPOT_TOOLS_WIN_TOOLCHAIN=0
+          $env:Path = "$pwd\depot_tools;" + $env:Path
+          refreshenv
+          cd angle
+          python scripts\bootstrap.py
+          refreshenv
+          gclient sync --revision=$env:ANGLE_REVISION
+      - name: Set up build projects
+        shell: pwsh
+        run: |
+          choco install llvm 2>&1>$null
+          $env:DEPOT_TOOLS_WIN_TOOLCHAIN=0
+          $env:Path = "$pwd\depot_tools;" + $env:Path
+          cd angle
+          gn gen out/Build_${{ matrix.arch }} --args='is_clang=true is_debug=false use_custom_libcxx=true is_component_build=false  target_cpu=\"${{ matrix.cpu }}\"'
+      - name: Build Angle
+        shell: pwsh
+        run: |
+          $env:Path = "$pwd\depot_tools;" + $env:Path
+          &("C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\Tools\VsDevCmd.bat")
+          cd angle
+          autoninja -C out\Build_${{ matrix.arch }} libANGLE
+          autoninja -C out\Build_${{ matrix.arch }} libEGL
+          autoninja -C out\Build_${{ matrix.arch }} libGL
+          autoninja -C out\Build_${{ matrix.arch }} libGLESv1_CM 
+          autoninja -C out\Build_${{ matrix.arch }} libGLESv2
+      - name: Copy Binaries
+        shell: pwsh
+        run: |
+          New-Item -Name "${{ matrix.cpu }}" -ItemType "directory"
+          New-Item -Name "lib" -ItemType "directory"
+          New-Item -Name "Binaries" -ItemType "directory"
+          Copy-Item -Path "angle\out\Build_${{ matrix.arch }}\*.lib" -Destination "${{ matrix.cpu }}" -Recurse
+          Copy-Item -Path "angle\out\Build_${{ matrix.arch }}\*.dll" -Destination "${{ matrix.cpu }}" -Recurse
+          Copy-Item -Path "angle\out\Build_${{ matrix.arch }}\*.pdb" -Destination "${{ matrix.cpu }}" -Recurse
+          Move-Item -Path "${{ matrix.cpu }}" -Destination "lib"
+          Move-Item -Path "lib" -Destination "Binaries"
+          Copy-Item -Path "angle\include" -Destination "Binaries" -Recurse 
+          7z a ANGLE.zip Binaries\*
+      - name: Archive ${{ matrix.variant }} ANGLE archive on ${{ matrix.os }}
+        uses: actions/upload-artifact@master
+        with:
+          name: Angle $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }}
+          path: Angle.zip
+
   main:
     strategy:
       fail-fast: false
@@ -19,29 +110,29 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.target }} - ${{ matrix.variant }} on ${{ matrix.os }}
     steps:
-    - name: Check out source
-      uses: actions/checkout@v1
-    - name: Environment bootstrap
-      run: sudo ./prep-gitlab.sh
-    - name: Bootstrap ${{ matrix.variant }} ANGLE environment for ${{ matrix.target }} on ${{ matrix.os }}  
-      run: ./bootstrap-moded.sh ${{ matrix.variant }} ${{ matrix.target }}
-    - name: Archive ${{ matrix.variant }} ANGLE configuration for ${{ matrix.target }} on ${{ matrix.os }}  
-      uses: actions/upload-artifact@master
-      with:
-        name: Configuration of ${{ matrix.variant }} for ${{ matrix.target }} on ${{ matrix.os }}  
-        path: angle/out/${{ matrix.variant }}/args.gn
-    - name: Fake out the GGP headers
-      if: matrix.target == 'ggp'
-      run: echo "Moved to a script. Just keeping this BECAUSE I LIKE CONDITIONAL STEPS this is so cool"
-    - name: Build ANGLE ${{ matrix.variant }} for ${{ matrix.target }} on ${{ matrix.os }}  
-      run: ./makestrap.sh ${{ matrix.variant }}
-    - name: Compress ${{ matrix.variant }} artifacts for ${{ matrix.target }} on ${{ matrix.os }}  
-      run: |
-        cd angle/out/${{ matrix.variant }};
-        tar -cf ../${{ matrix.variant }}.tar *.so;
-        gzip ../${{ matrix.variant }}.tar;
-    - name: Archive ANGLE ${{ matrix.variant }} Build Artifacts for ${{ matrix.target }} on ${{ matrix.os }}  
-      uses: actions/upload-artifact@master
-      with:
-        name: Angle ${{ matrix.variant }} Libraries for ${{ matrix.target }} on ${{ matrix.os }}
-        path: angle/out/${{ matrix.variant }}.tar.gz
+      - name: Check out source
+        uses: actions/checkout@v1
+      - name: Environment bootstrap
+        run: sudo ./prep-gitlab.sh
+      - name: Bootstrap ${{ matrix.variant }} ANGLE environment for ${{ matrix.target }} on ${{ matrix.os }}  
+        run: ./bootstrap-moded.sh ${{ matrix.variant }} ${{ matrix.target }}
+      - name: Archive ${{ matrix.variant }} ANGLE configuration for ${{ matrix.target }} on ${{ matrix.os }}  
+        uses: actions/upload-artifact@master
+        with:
+          name: Configuration of ${{ matrix.variant }} for ${{ matrix.target }} on ${{ matrix.os }}  
+          path: angle/out/${{ matrix.variant }}/args.gn
+      - name: Fake out the GGP headers
+        if: matrix.target == 'ggp'
+        run: echo "Moved to a script. Just keeping this BECAUSE I LIKE CONDITIONAL STEPS this is so cool"
+      - name: Build ANGLE ${{ matrix.variant }} for ${{ matrix.target }} on ${{ matrix.os }}  
+        run: ./makestrap.sh ${{ matrix.variant }}
+      - name: Compress ${{ matrix.variant }} artifacts for ${{ matrix.target }} on ${{ matrix.os }}  
+        run: |
+          cd angle/out/${{ matrix.variant }};
+          tar -cf ../${{ matrix.variant }}.tar *.so;
+          gzip ../${{ matrix.variant }}.tar;
+      - name: Archive ANGLE ${{ matrix.variant }} Build Artifacts for ${{ matrix.target }} on ${{ matrix.os }}  
+        uses: actions/upload-artifact@master
+        with:
+          name: Angle ${{ matrix.variant }} Libraries for ${{ matrix.target }} on ${{ matrix.os }}
+          path: angle/out/${{ matrix.variant }}.tar.gz
