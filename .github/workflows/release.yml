@@ -30,7 +30,7 @@ jobs:
         path: angle/out/${{ matrix.variant }}/args.gn
     - name: Fake out the GGP headers
       if: matrix.target == 'ggp'
-      run: Moved to a script. Just keeping this BECAUSE I LIKE CONDITIONAL STEPS this is so cool
+      run: echo "Moved to a script. Just keeping this BECAUSE I LIKE CONDITIONAL STEPS this is so cool"
     - name: Build ANGLE ${{ matrix.variant }} for ${{ matrix.target }} on ${{ matrix.os }}  
       run: ./makestrap.sh ${{ matrix.variant }}
     - name: Compress ${{ matrix.variant }} artifacts for ${{ matrix.target }} on ${{ matrix.os }}  
