@@ -6,8 +6,6 @@ on:
       - master
   schedule:
     - cron: "0 0 * * *"
-env:
-  DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
 
 jobs:
   windows:
