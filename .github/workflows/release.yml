@@ -6,6 +6,8 @@ on:
       - master
   schedule:
     - cron: "0 0 * * *"
+env:
+  DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
 
 jobs:
   windows:
@@ -30,6 +32,15 @@ jobs:
       PYTHON_HOME: ''
       GIT_REPO_ANGLE_SOURCE_OF_TRUTHINESS: "https://github.com/FNA-XNA/angle-ggp.git"
     steps:
+      - name: Discord message (1)
+        shell: pwsh
+        run: |
+          $body = @'
+          {
+            "content": "Starting ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Library build job for ${{ matrix.variant }} on ${{ matrix.os }}."
+          }
+          '@
+          Invoke-RestMethod -Uri ${{ secrets.DISCORD_WEBHOOK }} -ContentType "application/json" -Method Post -Body $body
       - name: Check out source
         uses: actions/checkout@v1
       - name: Fetch depot_tools
@@ -70,6 +81,15 @@ jobs:
           $env:Path = "$pwd\depot_tools;" + $env:Path
           cd angle
           gn gen out/Build_${{ matrix.arch }} --args='is_clang=true is_debug=false use_custom_libcxx=true is_component_build=false  target_cpu=\"${{ matrix.cpu }}\"'
+      - name: Discord message (2)
+        shell: pwsh
+        run: |
+          $body = @'
+          {
+            "content": "Starting build of ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }}."
+          }
+          '@
+          Invoke-RestMethod -Uri ${{ secrets.DISCORD_WEBHOOK }} -ContentType "application/json" -Method Post -Body $body
       - name: Build Angle
         shell: pwsh
         run: |
@@ -99,13 +119,15 @@ jobs:
         with:
           name: Angle $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }}
           path: Angle.zip
-      - name: Discord message
-        uses: appleboy/discord-action@master
-        with:
-          webhook_id: ${{ secrets.DISCORD_WEBHOOK }}
-          webhook_token: ${{ secrets.DISCORD_CLIENT_SECRET }}
-          username: "GitHub sez hi"
-          message: "ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }} have been built!"
+      - name: Discord message (3)
+        shell: pwsh
+        run: |
+          $body = @'
+          {
+            "content": "ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }} have been built and deployed!"
+          }
+          '@
+          Invoke-RestMethod -Uri ${{ secrets.DISCORD_WEBHOOK }} -ContentType "application/json" -Method Post -Body $body
 
   main:
     strategy:
@@ -117,6 +139,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.target }} - ${{ matrix.variant }} on ${{ matrix.os }}
     steps:
+      - name: Discord message (1)
+        uses: Ilshidur/action-discord@master
+        with:
+          args: "Starting ANGLE ${{ matrix.variant }} job for ${{ matrix.target }} on ${{ matrix.os }} ."
       - name: Check out source
         uses: actions/checkout@v1
       - name: Environment bootstrap
@@ -131,8 +157,16 @@ jobs:
       - name: Fake out the GGP headers
         if: matrix.target == 'ggp'
         run: echo "Moved to a script. Just keeping this BECAUSE I LIKE CONDITIONAL STEPS this is so cool"
+      - name: Discord message (2)
+        uses: Ilshidur/action-discord@master
+        with:
+          args: "Starting ANGLE ${{ matrix.variant }} build for ${{ matrix.target }} on ${{ matrix.os }}."
       - name: Build ANGLE ${{ matrix.variant }} for ${{ matrix.target }} on ${{ matrix.os }}  
         run: ./makestrap.sh ${{ matrix.variant }}
+      - name: Discord message (3)
+        uses: Ilshidur/action-discord@master
+        with:
+          args: "ANGLE ${{ matrix.variant }} for ${{ matrix.target }} on ${{ matrix.os }} has been built!"
       - name: Compress ${{ matrix.variant }} artifacts for ${{ matrix.target }} on ${{ matrix.os }}  
         run: |
           cd angle/out/${{ matrix.variant }};
