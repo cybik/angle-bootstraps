@@ -36,7 +36,7 @@ jobs:
         shell: pwsh
         run: |
           $body = @{
-            "content": "Starting ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Library build job for ${{ matrix.variant }} on ${{ matrix.os }}."
+            "content"="Starting ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Library build job for ${{ matrix.variant }} on ${{ matrix.os }}."
           }
           Invoke-WebRequest -UseBasicParsing ${{ secrets.DISCORD_WEBHOOK }} -ContentType "application/json" -Method POST -Body $body
       - name: Check out source
@@ -83,7 +83,7 @@ jobs:
         shell: pwsh
         run: |
           $body = @{
-            "content": "Starting build of ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }}."
+            "content"="Starting build of ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }}."
           }
           Invoke-WebRequest -UseBasicParsing ${{ secrets.DISCORD_WEBHOOK }} -ContentType "application/json" -Method POST -Body $body
       - name: Build Angle
@@ -119,7 +119,7 @@ jobs:
         shell: pwsh
         run: |
           $body = @{
-            "content": "ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }} have been built and deployed!"
+            "content"="ANGLE $${{ matrix.cpu }}_${{ matrix.arch }} Libraries for ${{ matrix.variant }} on ${{ matrix.os }} have been built and deployed!"
           }
           Invoke-WebRequest -UseBasicParsing ${{ secrets.DISCORD_WEBHOOK }} -ContentType "application/json" -Method POST -Body $body
 
