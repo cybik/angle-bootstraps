@@ -45,7 +45,7 @@ jobs:
         shell: pwsh
         run: |
           del C:\ProgramData\Chocolatey\bin\pytho*.exe
-          git clone %GIT_REPO_ANGLE_SOURCE_OF_TRUTHINESS%
+          git clone $env:GIT_REPO_ANGLE_SOURCE_OF_TRUTHINESS
           cd angle
       - name: Bootstrap ${{ matrix.variant }} ANGLE dependencies on ${{ matrix.os }}
         shell: pwsh
