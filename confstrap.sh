@@ -26,7 +26,5 @@ is_ggp = $IS_GGP
 is_desktop_linux = $IS_LINUX
 EOF
 
-# TODO: Force -stdlib=libc++
-
 # Re-gen
 gn gen out/${TARGET}
