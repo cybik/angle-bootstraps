@@ -16,14 +16,14 @@ stages:
 .build_def_normal: &build_definition_normal
   <<: *build_definition
   script: |
-    echo "Buildstrapping for ${CI_JOB_NAME}";
-    ./buildstrap.sh ${CI_JOB_NAME};
+    echo "Buildstrapping for ${TARGET}";
+    ./buildstrap.sh ${TARGET};
 
 .build_def_ggp: &build_definition_ggp
   <<: *build_definition
   script: |
-    echo "Buildstrapping for ${CI_JOB_NAME} ggp";
-    ./buildstrap.sh ${CI_JOB_NAME} ggp;
+    echo "Buildstrapping for ${TARGET} ggp";
+    ./buildstrap.sh ${TARGET} ggp;
 
 Debug:
   variables:
