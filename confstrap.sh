@@ -25,6 +25,7 @@ angle_enable_gl = false
 angle_enable_null = false
 is_ggp = $IS_GGP
 is_desktop_linux = $IS_LINUX
+use_custom_libcxx = $IS_GGP
 EOF
 
 # Re-gen
