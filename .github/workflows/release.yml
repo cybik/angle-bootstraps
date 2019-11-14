@@ -142,13 +142,6 @@ jobs:
       matrix:
         os: [ubuntu-18.04]
         target: [ggp, linux]
-        include:
-          - target: ggp
-            compiler_cc: clang -stdlib=libc++ -D__ggp__
-            compiler_cxx: clang++ -stdlib=libc++ -D__ggp__
-          - target: linux
-            compiler_cc: gcc
-            compiler_cxx: g++
         variant: [Release]
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.target }} - ${{ matrix.variant }} on ${{ matrix.os }}
@@ -163,9 +156,6 @@ jobs:
       - name: Environment bootstrap
         run: sudo ./prep-gitlab.sh
       - name: Bootstrap ${{ matrix.variant }} ANGLE environment for ${{ matrix.target }} on ${{ matrix.os }}  
-        env:
-          CC: ${{ matrix.compiler_cc }}
-          CXX: ${{ matrix.compiler_cxx }}
         run: ./bootstrap-moded.sh ${{ matrix.variant }} ${{ matrix.target }}
       - name: Archive ${{ matrix.variant }} ANGLE configuration for ${{ matrix.target }} on ${{ matrix.os }}  
         uses: actions/upload-artifact@master
@@ -178,9 +168,6 @@ jobs:
             --data "{ \"content\": \"Starting ANGLE ${{ matrix.variant }} build for ${{ matrix.target }} on ${{ matrix.os }}.\" }" \
             ${{ secrets.DISCORD_WEBHOOK }}
       - name: Build ANGLE ${{ matrix.variant }} for ${{ matrix.target }} on ${{ matrix.os }}  
-        env:
-          CC: ${{ matrix.compiler_cc }}
-          CXX: ${{ matrix.compiler_cxx }}
         run: ./makestrap.sh ${{ matrix.variant }}
       - name: Discord message (3)
         run: |
