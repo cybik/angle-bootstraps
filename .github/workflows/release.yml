@@ -145,7 +145,7 @@ jobs:
         include:
           - target: ggp
             compiler_cc: clang -stdlib=libc++ -D__ggp__
-            compiler_cxx: clang -stdlib=libc++ -D__ggp__
+            compiler_cxx: clang++ -stdlib=libc++ -D__ggp__
           - target: linux
             compiler_cc: gcc
             compiler_cxx: g++
