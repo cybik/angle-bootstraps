@@ -11,6 +11,8 @@ cd angle
 if [ ! -z "${2}" ] && [ "${2}" == "ggp" ]; then
     IS_GGP="true"
     IS_LINUX="false"
+    export CC="clang -stdlib=libc++"
+    export CXX="clang++ -stdlib=libc++"
 fi
 
 # Gen for the first time
@@ -19,6 +21,7 @@ gn gen out/${TARGET}
 # Edit args, per https://gn.googlesource.com/gn/+/master/docs/reference.md#cmd_args
 cat > out/${TARGET}/args.gn << EOF
 target_cpu = "x64"
+is_clang = false
 is_debug = $IS_DEBUG
 angle_enable_gl = false
 angle_enable_null = false
