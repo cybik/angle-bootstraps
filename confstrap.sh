@@ -11,8 +11,6 @@ cd angle
 if [ ! -z "${2}" ] && [ "${2}" == "ggp" ]; then
     IS_GGP="true"
     IS_LINUX="false"
-    export CC="clang -stdlib=libc++"
-    export CXX="clang++ -stdlib=libc++"
 fi
 
 # Gen for the first time
