@@ -28,19 +28,19 @@ stages:
 Debug:
   variables:
     TARGET: Debug
-  <<: *build_definition-normal
+  <<: *build_definition_normal
 
 Release:
   variables:
     TARGET: Release
-  <<: *build_definition-normal
+  <<: *build_definition_normal
 
 Debug-ggp:
   variables:
     TARGET: Debug
-  <<: *build_definition-ggp
+  <<: *build_definition_ggp
 
 Release-ggp:
   variables:
     TARGET: Release
-  <<: *build_definition-ggp
+  <<: *build_definition_ggp
