@@ -143,13 +143,13 @@ jobs:
         os: [ubuntu-18.04]
         target: [ggp, linux]
         include:
-          target: ggp
-          compiler_cc: clang -stdlib=libc++ -D__ggp__
-          compiler_cxx: clang -stdlib=libc++ -D__ggp__
+          - target: ggp
+            compiler_cc: clang -stdlib=libc++ -D__ggp__
+            compiler_cxx: clang -stdlib=libc++ -D__ggp__
         include:
-          target: linux
-          compiler_cc: gcc
-          compiler_cxx: g++
+          - target: linux
+            compiler_cc: gcc
+            compiler_cxx: g++
         variant: [Release]
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.target }} - ${{ matrix.variant }} on ${{ matrix.os }}
