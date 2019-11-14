@@ -11,14 +11,36 @@ stages:
       - angle/out/*/args.gn
   before_script:
     - ./prep-gitlab.sh
+    
+
+.build_def_normal: &build_definition_normal
+  <<: *build_definition
   script: |
     echo "Buildstrapping for ${CI_JOB_NAME}";
     ./buildstrap.sh ${CI_JOB_NAME};
 
-# the job names MUST MATCH THE ANGLE BUILD TYPES.
-#  You have been SO WARNED.
-Debug:
+.build_def_ggp: &build_definition_ggp
   <<: *build_definition
+  script: |
+    echo "Buildstrapping for ${CI_JOB_NAME} ggp";
+    ./buildstrap.sh ${CI_JOB_NAME} ggp;
+
+Debug:
+  variables:
+    TARGET: Debug
+  <<: *build_definition-normal
 
 Release:
-  <<: *build_definition
+  variables:
+    TARGET: Release
+  <<: *build_definition-normal
+
+Debug-ggp:
+  variables:
+    TARGET: Debug
+  <<: *build_definition-ggp
+
+Release-ggp:
+  variables:
+    TARGET: Release
+  <<: *build_definition-ggp
