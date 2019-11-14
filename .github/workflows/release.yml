@@ -162,9 +162,6 @@ jobs:
         with:
           name: Configuration of ${{ matrix.variant }} for ${{ matrix.target }} on ${{ matrix.os }}  
           path: angle/out/${{ matrix.variant }}/args.gn
-      - name: Fake out GGP headers as needed
-        if: matrix.target == 'ggp'
-        run: echo "Moved to a script. Just keeping this BECAUSE I LIKE CONDITIONAL STEPS this is so cool"
       - name: Discord message (2)
         run: |
           curl -X POST -H "Content-Type: application/json" \

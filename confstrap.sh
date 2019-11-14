@@ -11,18 +11,7 @@ cd angle
 if [ ! -z "${2}" ] && [ "${2}" == "ggp" ]; then
     IS_GGP="true"
     IS_LINUX="false"
-    # Config
-    mkdir -p include/ggp_c
-    cat > include/ggp_c/vulkan_types.h << EOF
-typedef uint64_t GgpFrameToken;
-typedef uint32_t GgpStreamDescriptor;
-static const uint32_t kGgpPrimaryStreamDescriptor = 1;
-EOF
-    echo "Created include/ggp_c/vulkan_types.h"
-else
-    [ -f "include/ggp_c/vulkan_types.h" ] && bash -c 'rm -f include/ggp_c/vulkan_types.h; echo "ggp_c vulkan_types deleted"'
 fi
-
 
 # Gen for the first time
 gn gen out/${TARGET}
