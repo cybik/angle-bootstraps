@@ -28,7 +28,7 @@ jobs:
       DEPOT_TOOLS_WIN_TOOLCHAIN: '0'
       DEPOT_TOOLS_METRICS: '0'
       PYTHON_HOME: ''
-      GIT_REPO_ANGLE_SOURCE_OF_TRUTHINESS: "https://github.com/FNA-XNA/angle-ggp.git"
+      GIT_REPO_ANGLE_SOURCE_OF_TRUTHINESS: "https://github.com/ANGLE-Builds/angle-ggp.git"
     steps:
       - name: Discord message (1)
         shell: pwsh
