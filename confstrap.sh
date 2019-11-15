@@ -14,4 +14,4 @@ if [ ! -z "${2}" ] && [ "${2}" == "ggp" ]; then
 fi
 
 cd angle
-gn gen out/${TARGET} --args="target_cpu=\"x64\" is_debug=${IS_DEBUG} angle_enable_gl=false angle_enable_null=false is_ggp=${IS_GGP} is_desktop_linux=${IS_LINUX} target_os=${GN_TARGETOS} use_custom_libcxx=${IS_GGP} angle_swiftshader=false"
+gn gen out/${TARGET} --args="target_cpu=\"x64\" is_debug=${IS_DEBUG} angle_enable_gl=false angle_enable_null=false is_ggp=${IS_GGP} is_desktop_linux=${IS_LINUX} target_os=\"${GN_TARGETOS}\" use_custom_libcxx=${IS_GGP} angle_swiftshader=false"
