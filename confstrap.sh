@@ -5,6 +5,7 @@ TARGET="${1}"
 IS_DEBUG="false"
 [ "${TARGET}" == "Debug" ] && IS_DEBUG="true"
 
+# Either way it's Linux, but is this GGP or Desktop?
 IS_GGP="false"
 [ ! -z "${2}" ] && [ "${2}" == "ggp" ] && IS_GGP="true"
 
