@@ -68,7 +68,7 @@ jobs:
           $env:DEPOT_TOOLS_WIN_TOOLCHAIN=0
           $env:Path = "$pwd\depot_tools;" + $env:Path
           cd angle
-          gn gen out/Build_UWP --args='is_clang=false is_debug=false use_custom_libcxx=true is_component_build=false  target_cpu=\"x64\" target_os=\"winuwp\"'
+          gn gen out/Build_UWP --args='is_clang=false is_debug=false use_custom_libcxx=true is_component_build=false  target_cpu=\"x64\" target_os=\"winuwp\" angle_is_winuwp=true'
       - name: Discord message (2)
         shell: pwsh
         run: |
