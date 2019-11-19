@@ -24,11 +24,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.variant }} on ${{ matrix.os }} ( ${{ matrix.cpu }}_${{ matrix.arch }} )
     env:
-      ANGLE_REVISION: '26a92a034e0db9ae88c8b3d35046d29011c6cd6d'
       DEPOT_TOOLS_WIN_TOOLCHAIN: '0'
       DEPOT_TOOLS_METRICS: '0'
       PYTHON_HOME: ''
-      GIT_REPO_ANGLE_SOURCE_OF_TRUTHINESS: "https://chromium.googlesource.com/angle/angle"
     steps:
       - name: Discord message (1)
         shell: pwsh
@@ -59,7 +57,7 @@ jobs:
         shell: pwsh
         run: |
           del C:\ProgramData\Chocolatey\bin\pytho*.exe
-          git clone $env:GIT_REPO_ANGLE_SOURCE_OF_TRUTHINESS angle
+          git clone https://chromium.googlesource.com/angle/angle
           cd angle
       - name: Bootstrap ${{ matrix.variant }} ANGLE dependencies on ${{ matrix.os }}
         shell: pwsh
@@ -70,7 +68,7 @@ jobs:
           cd angle
           python scripts\bootstrap.py
           refreshenv
-          gclient sync --revision=$env:ANGLE_REVISION
+          gclient sync
       - name: Set up build projects
         shell: pwsh
         run: |
