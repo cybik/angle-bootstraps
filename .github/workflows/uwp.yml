@@ -51,8 +51,8 @@ jobs:
           del C:\ProgramData\Chocolatey\bin\pytho*.exe
           git clone https://chromium.googlesource.com/angle/angle
           cd angle
-          git apply -v ../patches/0001-HACK-Allow-feature-level-10.0-to-use-ES-3.0.patch
-          git apply -v ../patches/0002-GN-Only-link-to-delayimp-if-d3d9-is-enabled.patch
+          git apply ../patches/0001-HACK-Allow-feature-level-10.0-to-use-ES-3.0.patch
+          git apply ../patches/0002-GN-Only-link-to-delayimp-if-d3d9-is-enabled.patch
       - name: Bootstrap ${{ matrix.variant }} ANGLE UWP dependencies on ${{ matrix.os }}
         shell: pwsh
         run: |
