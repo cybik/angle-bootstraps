@@ -1,0 +1,27 @@
+From c3c7dc93f3a3b2791cf5908cbad5de0145f4c7b1 Mon Sep 17 00:00:00 2001
+From: Ethan Lee <flibitijibibo@gmail.com>
+Date: Fri, 15 Nov 2019 12:31:44 -0500
+Subject: [PATCH] HACK: Force __ggp__ define
+
+---
+ BUILD.gn | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/BUILD.gn b/BUILD.gn
+index d930babeb..d2368611f 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -110,6 +110,10 @@ config("internal_config") {
+   if (is_chromeos) {
+     defines += [ "ANGLE_PLATFORM_CHROMEOS" ]
+   }
++
++  if (is_ggp) {
++    defines += [ "__ggp__" ]
++  }
+ }
+ 
+ config("constructor_and_destructor_warnings") {
+-- 
+2.21.0
+
