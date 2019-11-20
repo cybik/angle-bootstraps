@@ -15,6 +15,6 @@ gclient sync
 sudo ./build/install-build-deps.sh
 
 # Apply custom patches for GGP public builds
-git am ../patches/0001-HACK-Force-__ggp__-define.patch
-git --git-dir=third_party/vulkan-loader/src/.git am ../patches/0001-HACK-Stub-GGP-functions.patch
-git --git-dir=third_party/vulkan-headers/src/.git am ../patches/0001-GN-Make-PLATFORM_XCB-optional-based-on-a-user-define.patch
+git apply ../patches/0001-HACK-Force-__ggp__-define.patch
+git --git-dir=third_party/vulkan-loader/src/.git apply ../patches/0001-HACK-Stub-GGP-functions.patch
+git --git-dir=third_party/vulkan-headers/src/.git apply ../patches/0001-GN-Make-PLATFORM_XCB-optional-based-on-a-user-define.patch
