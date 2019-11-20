@@ -1,0 +1,28 @@
+From b7db45a4cda53972b9c592677200fd5e80c976d9 Mon Sep 17 00:00:00 2001
+From: Ethan Lee <flibitijibibo@gmail.com>
+Date: Tue, 19 Nov 2019 23:39:58 -0500
+Subject: [PATCH] HACK: Allow feature level 10.0 to use ES 3.0
+
+(Just don't use cubemap arrays or whatever)
+---
+ src/libANGLE/renderer/d3d/d3d11/renderer11_utils.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/libANGLE/renderer/d3d/d3d11/renderer11_utils.cpp b/src/libANGLE/renderer/d3d/d3d11/renderer11_utils.cpp
+index 4db02f250..18cb72a72 100644
+--- a/src/libANGLE/renderer/d3d/d3d11/renderer11_utils.cpp
++++ b/src/libANGLE/renderer/d3d/d3d11/renderer11_utils.cpp
+@@ -1312,9 +1312,9 @@ gl::Version GetMaximumClientVersion(D3D_FEATURE_LEVEL featureLevel)
+         case D3D_FEATURE_LEVEL_11_0:
+             return gl::Version(3, 1);
+         case D3D_FEATURE_LEVEL_10_1:
++        case D3D_FEATURE_LEVEL_10_0:
+             return gl::Version(3, 0);
+ 
+-        case D3D_FEATURE_LEVEL_10_0:
+         case D3D_FEATURE_LEVEL_9_3:
+         case D3D_FEATURE_LEVEL_9_2:
+         case D3D_FEATURE_LEVEL_9_1:
+-- 
+2.21.0
+
