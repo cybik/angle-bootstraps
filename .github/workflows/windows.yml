@@ -59,6 +59,7 @@ jobs:
           del C:\ProgramData\Chocolatey\bin\pytho*.exe
           git clone https://chromium.googlesource.com/angle/angle
           cd angle
+          git apply ../patches/XXXX-Implement-BaseVertex-draw-calls.patch
       - name: Bootstrap ${{ matrix.variant }} ANGLE dependencies on ${{ matrix.os }}
         shell: pwsh
         run: |
