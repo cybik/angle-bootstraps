@@ -1,4 +1,4 @@
-From 39fd6162bc888d8765b6d7eaad39378cd4d23ecf Mon Sep 17 00:00:00 2001
+From 4d3980470730a42a320cf5315a790a907314e72a Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls
@@ -6,7 +6,7 @@ Subject: [PATCH] Implement BaseVertex draw calls
 Bug: angleproject:3582
 Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
 ---
- src/libANGLE/Context.cpp                      | 33 +++++++-
+ src/libANGLE/Context.cpp                      | 45 ++++++++--
  src/libANGLE/renderer/ContextImpl.h           | 21 +++++
  src/libANGLE/renderer/d3d/d3d11/Context11.cpp | 33 ++++++++
  src/libANGLE/renderer/d3d/d3d11/Context11.h   | 21 +++++
@@ -25,13 +25,21 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libANGLE/renderer/vulkan/vk_helpers.cpp   |  4 +-
  src/libANGLE/renderer/vulkan/vk_helpers.h     |  2 +-
  src/libANGLE/renderer/vulkan/vk_wrapper.h     | 18 ++++
- 19 files changed, 541 insertions(+), 8 deletions(-)
+ 19 files changed, 547 insertions(+), 14 deletions(-)
 
 diff --git a/src/libANGLE/Context.cpp b/src/libANGLE/Context.cpp
-index 8750e695a..bb9fe052e 100644
+index 8750e695a..025c333ab 100644
 --- a/src/libANGLE/Context.cpp
 +++ b/src/libANGLE/Context.cpp
-@@ -2305,7 +2305,16 @@ void Context::drawElementsBaseVertex(GLenum mode,
+@@ -2299,23 +2299,41 @@ void Context::drawElementsInstanced(PrimitiveMode mode,
+     MarkShaderStorageBufferUsage(this);
+ }
+ 
+-void Context::drawElementsBaseVertex(GLenum mode,
++void Context::drawElementsBaseVertex(PrimitiveMode mode,
+                                      GLsizei count,
+-                                     GLenum type,
++                                     DrawElementsType type,
                                       const void *indices,
                                       GLint basevertex)
  {
@@ -48,8 +56,12 @@ index 8750e695a..bb9fe052e 100644
 +    MarkShaderStorageBufferUsage(this);
  }
  
- void Context::drawElementsInstancedBaseVertex(GLenum mode,
-@@ -2315,7 +2324,16 @@ void Context::drawElementsInstancedBaseVertex(GLenum mode,
+-void Context::drawElementsInstancedBaseVertex(GLenum mode,
++void Context::drawElementsInstancedBaseVertex(PrimitiveMode mode,
+                                               GLsizei count,
+-                                              GLenum type,
++                                              DrawElementsType type,
+                                               const void *indices,
                                                GLsizei instancecount,
                                                GLint basevertex)
  {
@@ -67,7 +79,17 @@ index 8750e695a..bb9fe052e 100644
  }
  
  void Context::drawRangeElements(PrimitiveMode mode,
-@@ -2345,7 +2363,16 @@ void Context::drawRangeElementsBaseVertex(GLenum mode,
+@@ -2337,15 +2355,24 @@ void Context::drawRangeElements(PrimitiveMode mode,
+     MarkShaderStorageBufferUsage(this);
+ }
+ 
+-void Context::drawRangeElementsBaseVertex(GLenum mode,
++void Context::drawRangeElementsBaseVertex(PrimitiveMode mode,
+                                           GLuint start,
+                                           GLuint end,
+                                           GLsizei count,
+-                                          GLenum type,
++                                          DrawElementsType type,
                                            const void *indices,
                                            GLint basevertex)
  {
@@ -885,7 +907,7 @@ index 0ec910ed1..ae4337f9e 100644
                  {
                      const DrawIndexedInstancedBaseVertexBaseInstanceParams *params =
 diff --git a/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.h b/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.h
-index cc3704668..9e6b25096 100644
+index cc3704668..19c2c9a1c 100644
 --- a/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.h
 +++ b/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.h
 @@ -47,7 +47,9 @@ enum class CommandID : uint16_t
@@ -947,8 +969,8 @@ index cc3704668..9e6b25096 100644
 +ANGLE_INLINE void SecondaryCommandBuffer::drawIndexedBaseVertex(uint32_t indexCount,
 +                                                                uint32_t vertexOffset)
 +{
-+    DrawIndexedParamsBaseVertex *paramStruct =
-+        initCommand<DrawIndexedParamsBaseVertex>(CommandID::DrawIndexedBaseVertex);
++    DrawIndexedBaseVertexParams *paramStruct =
++        initCommand<DrawIndexedBaseVertexParams>(CommandID::DrawIndexedBaseVertex);
 +    paramStruct->indexCount   = indexCount;
 +    paramStruct->vertexOffset = vertexOffset;
 +}
