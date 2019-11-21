@@ -1,4 +1,4 @@
-From b0e89e36b3fe0fcc88c56f48897299444efb97a4 Mon Sep 17 00:00:00 2001
+From 1af9ec4341df5c24850441afd57110e80dbf245e Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls for Vulkan, OpenGL, NULL
@@ -14,6 +14,7 @@ Bug: angleproject:3582
 Bug: angleproject:3402
 Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
 ---
+ .../GL_EGL_entry_points.json                  | 18 ++--
  scripts/entry_point_packed_gl_enums.json      | 12 +++
  src/libANGLE/Context.cpp                      | 45 ++++++++--
  src/libANGLE/Context_gles_3_2_autogen.h       | 14 ++--
@@ -43,8 +44,83 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libGL/entry_points_gl_3_2_autogen.cpp     | 44 +++++-----
  .../entry_points_gles_3_2_autogen.cpp         | 44 +++++-----
  .../entry_points_gles_ext_autogen.cpp         | 44 +++++-----
- 29 files changed, 748 insertions(+), 127 deletions(-)
+ 30 files changed, 757 insertions(+), 136 deletions(-)
 
+diff --git a/scripts/code_generation_hashes/GL_EGL_entry_points.json b/scripts/code_generation_hashes/GL_EGL_entry_points.json
+index 3927f7cda..f0e240475 100644
+--- a/scripts/code_generation_hashes/GL_EGL_entry_points.json
++++ b/scripts/code_generation_hashes/GL_EGL_entry_points.json
+@@ -4,7 +4,7 @@
+   "scripts/egl_angle_ext.xml":
+     "24d4348e6c064b6837f46c955cc219a8",
+   "scripts/entry_point_packed_gl_enums.json":
+-    "3b72a1d43df45cf53784b2a0002b93e5",
++    "96c56ee7b7ce2f485e5822e6cf300888",
+   "scripts/generate_entry_points.py":
+     "36f89f5514fff27ecb4baeded89ae64d",
+   "scripts/gl.xml":
+@@ -62,7 +62,7 @@
+   "src/libANGLE/Context_gles_3_1_autogen.h":
+     "8aef8ceb87eed9cc7e9586f6c98796e3",
+   "src/libANGLE/Context_gles_3_2_autogen.h":
+-    "72bf9e9e488c16ddfaf700afa3335d60",
++    "022bf1da90cc56f2e52998b87d274e64",
+   "src/libANGLE/Context_gles_ext_autogen.h":
+     "4a24e91315986187921051585d04f66f",
+   "src/libANGLE/capture_gles_1_0_autogen.cpp":
+@@ -82,9 +82,9 @@
+   "src/libANGLE/capture_gles_3_1_autogen.h":
+     "1739a558c3e77bef37d9fa710eb78932",
+   "src/libANGLE/capture_gles_3_2_autogen.cpp":
+-    "f74e229e52cc19b0678207e6204b563d",
++    "88cb88100c1f910254f0934359ba456e",
+   "src/libANGLE/capture_gles_3_2_autogen.h":
+-    "8d96d227765ee9b0d7b532edcc9f3bf1",
++    "fd5e95c49bb708635e5226f963a71eb5",
+   "src/libANGLE/capture_gles_ext_autogen.cpp":
+     "3bd6fcda980f381cbbad2956b896afd9",
+   "src/libANGLE/capture_gles_ext_autogen.h":
+@@ -94,7 +94,7 @@
+   "src/libANGLE/entry_points_enum_autogen.h":
+     "3be0bc6eaae7fe2dd4f491213e5c9c81",
+   "src/libANGLE/frame_capture_replay_autogen.cpp":
+-    "48b7051879562ab15c83e4de7af8c75d",
++    "337fdb20b09a0abbd42b9ac866d449f9",
+   "src/libANGLE/frame_capture_utils_autogen.cpp":
+     "f0a704d60de3f1f175a7799b49c45408",
+   "src/libANGLE/frame_capture_utils_autogen.h":
+@@ -106,7 +106,7 @@
+   "src/libANGLE/validationES31_autogen.h":
+     "9bf34098be328bee8f9fc04d1afbdfde",
+   "src/libANGLE/validationES32_autogen.h":
+-    "54ddf9c7d7d8071a33264e40353e00c6",
++    "4892ff4d6de709fe7f36ab49bf304b41",
+   "src/libANGLE/validationES3_autogen.h":
+     "1b470a8e190aa007f093f1f13f3b1a8c",
+   "src/libANGLE/validationESEXT_autogen.h":
+@@ -190,7 +190,7 @@
+   "src/libGL/entry_points_gl_3_1_autogen.h":
+     "6ee6613c0206d99c6afdcd3faddb52a3",
+   "src/libGL/entry_points_gl_3_2_autogen.cpp":
+-    "85c8dad28022855d4b08189abd0c45f9",
++    "d36d26e96cc912c74b82bbcb3125c753",
+   "src/libGL/entry_points_gl_3_2_autogen.h":
+     "347e40b5c9fd08a693bf4ffe713c61e6",
+   "src/libGL/entry_points_gl_3_3_autogen.cpp":
+@@ -246,11 +246,11 @@
+   "src/libGLESv2/entry_points_gles_3_1_autogen.h":
+     "043d09a964c740067bf4279e0b544aed",
+   "src/libGLESv2/entry_points_gles_3_2_autogen.cpp":
+-    "09693d9b4cd5f015ee1b1bd46a2a0e0a",
++    "b894d2b9b3024e69685ea430764f3962",
+   "src/libGLESv2/entry_points_gles_3_2_autogen.h":
+     "e06eb4df7dc6fb29c5fd632a54b0b162",
+   "src/libGLESv2/entry_points_gles_ext_autogen.cpp":
+-    "760cbaad5c626c1b27d579d6ca1b0049",
++    "bb70e8c74333c26b1a0d46318ed55238",
+   "src/libGLESv2/entry_points_gles_ext_autogen.h":
+     "a8dad3044b98f7988207a65987836143",
+   "src/libGLESv2/libGLESv2_autogen.cpp":
 diff --git a/scripts/entry_point_packed_gl_enums.json b/scripts/entry_point_packed_gl_enums.json
 index 1761267ab..19f16e85e 100644
 --- a/scripts/entry_point_packed_gl_enums.json
@@ -816,7 +892,7 @@ index 06b174fbc..977ea2ecb 100644
                                       gl::PrimitiveMode mode,
                                       const void *indirect) override;
 diff --git a/src/libANGLE/renderer/metal/ContextMtl.h b/src/libANGLE/renderer/metal/ContextMtl.h
-index ebfa537ab..55c3576a1 100644
+index a8738e7f5..e4fe2504a 100644
 --- a/src/libANGLE/renderer/metal/ContextMtl.h
 +++ b/src/libANGLE/renderer/metal/ContextMtl.h
 @@ -64,12 +64,25 @@ class ContextMtl : public ContextImpl, public mtl::Context
@@ -861,7 +937,7 @@ index ebfa537ab..55c3576a1 100644
                                       gl::PrimitiveMode mode,
                                       const void *indirect) override;
 diff --git a/src/libANGLE/renderer/metal/ContextMtl.mm b/src/libANGLE/renderer/metal/ContextMtl.mm
-index b9407e263..aadf3e708 100644
+index 726f9ece4..cba88e205 100644
 --- a/src/libANGLE/renderer/metal/ContextMtl.mm
 +++ b/src/libANGLE/renderer/metal/ContextMtl.mm
 @@ -302,6 +302,17 @@ angle::Result ContextMtl::drawElements(const gl::Context *context,
@@ -1300,7 +1376,7 @@ index cc3704668..19c2c9a1c 100644
      uint32_t indexCount,
      uint32_t instanceCount,
 diff --git a/src/libANGLE/renderer/vulkan/vk_helpers.cpp b/src/libANGLE/renderer/vulkan/vk_helpers.cpp
-index c36357e92..f161ea4ca 100644
+index bcc37ffb6..038b4a11f 100644
 --- a/src/libANGLE/renderer/vulkan/vk_helpers.cpp
 +++ b/src/libANGLE/renderer/vulkan/vk_helpers.cpp
 @@ -1388,10 +1388,10 @@ void LineLoopHelper::destroy(VkDevice device)
@@ -1317,7 +1393,7 @@ index c36357e92..f161ea4ca 100644
  
  // BufferHelper implementation.
 diff --git a/src/libANGLE/renderer/vulkan/vk_helpers.h b/src/libANGLE/renderer/vulkan/vk_helpers.h
-index fe3d0e9a7..ee153ac5f 100644
+index ae974f251..649d13321 100644
 --- a/src/libANGLE/renderer/vulkan/vk_helpers.h
 +++ b/src/libANGLE/renderer/vulkan/vk_helpers.h
 @@ -449,7 +449,7 @@ class LineLoopHelper final : angle::NonCopyable
