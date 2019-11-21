@@ -1,4 +1,4 @@
-From ebdfacfcbfda9385ea712468ba27647281f300d1 Mon Sep 17 00:00:00 2001
+From c5b5d9432759370624d863a48521f33572bfbc3b Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls
@@ -1359,7 +1359,7 @@ index c9fe77bd4..5cfc8f9c6 100644
                                                                              uint32_t instanceCount,
                                                                              uint32_t firstIndex,
 diff --git a/src/libANGLE/validationES32.cpp b/src/libANGLE/validationES32.cpp
-index 8a65450bd..3f8adae75 100644
+index 8a65450bd..2acaa056a 100644
 --- a/src/libANGLE/validationES32.cpp
 +++ b/src/libANGLE/validationES32.cpp
 @@ -118,35 +118,81 @@ bool ValidateDisablei(Context *context, GLenum target, GLuint index)
@@ -1401,7 +1401,7 @@ index 8a65450bd..3f8adae75 100644
 +        return false;
 +    }
 +
-+    return ValidateDrawElementsInstancedBase(context, mode, count, type, indices, instanceCount);
++    return ValidateDrawElementsInstancedBase(context, mode, count, type, indices, instancecount);
  }
  
  bool ValidateDrawRangeElementsBaseVertex(Context *context,
