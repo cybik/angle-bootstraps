@@ -1,4 +1,4 @@
-From 4d3980470730a42a320cf5315a790a907314e72a Mon Sep 17 00:00:00 2001
+From 2b73eecac6500f7685489435353dbccd4189f03e Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls
@@ -6,7 +6,12 @@ Subject: [PATCH] Implement BaseVertex draw calls
 Bug: angleproject:3582
 Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
 ---
+ scripts/entry_point_packed_gl_enums.json      | 12 +++
  src/libANGLE/Context.cpp                      | 45 ++++++++--
+ src/libANGLE/Context_gles_3_2_autogen.h       | 14 ++--
+ src/libANGLE/capture_gles_3_2_autogen.cpp     | 37 +++++----
+ src/libANGLE/capture_gles_3_2_autogen.h       | 24 +++---
+ src/libANGLE/frame_capture_replay_autogen.cpp | 15 ++--
  src/libANGLE/renderer/ContextImpl.h           | 21 +++++
  src/libANGLE/renderer/d3d/d3d11/Context11.cpp | 33 ++++++++
  src/libANGLE/renderer/d3d/d3d11/Context11.h   | 21 +++++
@@ -25,8 +30,49 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libANGLE/renderer/vulkan/vk_helpers.cpp   |  4 +-
  src/libANGLE/renderer/vulkan/vk_helpers.h     |  2 +-
  src/libANGLE/renderer/vulkan/vk_wrapper.h     | 18 ++++
- 19 files changed, 547 insertions(+), 14 deletions(-)
+ src/libANGLE/validationES32_autogen.h         | 12 +--
+ src/libGL/entry_points_gl_3_2_autogen.cpp     | 44 +++++-----
+ .../entry_points_gles_3_2_autogen.cpp         | 44 +++++-----
+ .../entry_points_gles_ext_autogen.cpp         | 44 +++++-----
+ 28 files changed, 688 insertions(+), 119 deletions(-)
 
+diff --git a/scripts/entry_point_packed_gl_enums.json b/scripts/entry_point_packed_gl_enums.json
+index 1761267ab..19f16e85e 100644
+--- a/scripts/entry_point_packed_gl_enums.json
++++ b/scripts/entry_point_packed_gl_enums.json
+@@ -333,6 +333,10 @@
+         "mode": "PrimitiveMode",
+         "type": "DrawElementsType"
+     },
++    "glDrawElementsBaseVertex": {
++        "mode": "PrimitiveMode",
++        "type": "DrawElementsType"
++    },
+     "glDrawElementsIndirect": {
+         "mode": "PrimitiveMode",
+         "type": "DrawElementsType"
+@@ -341,6 +345,10 @@
+         "mode": "PrimitiveMode",
+         "type": "DrawElementsType"
+     },
++    "glDrawElementsInstancedBaseVertex": {
++        "mode": "PrimitiveMode",
++        "type": "DrawElementsType"
++    },
+     "glDrawElementsInstancedBaseVertexBaseInstance": {
+         "mode": "PrimitiveMode",
+         "type": "DrawElementsType"
+@@ -349,6 +357,10 @@
+         "mode": "PrimitiveMode",
+         "type": "DrawElementsType"
+     },
++    "glDrawRangeElementsBaseVertex": {
++        "mode": "PrimitiveMode",
++        "type": "DrawElementsType"
++    },
+     "glDrawTransformFeedback": {
+         "id": "TransformFeedbackID"
+     },
 diff --git a/src/libANGLE/Context.cpp b/src/libANGLE/Context.cpp
 index 8750e695a..025c333ab 100644
 --- a/src/libANGLE/Context.cpp
@@ -107,6 +153,246 @@ index 8750e695a..025c333ab 100644
  }
  
  void Context::drawArraysIndirect(PrimitiveMode mode, const void *indirect)
+diff --git a/src/libANGLE/Context_gles_3_2_autogen.h b/src/libANGLE/Context_gles_3_2_autogen.h
+index 1ef85a632..2e31634ab 100644
+--- a/src/libANGLE/Context_gles_3_2_autogen.h
++++ b/src/libANGLE/Context_gles_3_2_autogen.h
+@@ -28,13 +28,15 @@
+     void debugMessageInsert(GLenum source, GLenum type, GLuint id, GLenum severity,                \
+                             GLsizei length, const GLchar *buf);                                    \
+     void disablei(GLenum target, GLuint index);                                                    \
+-    void drawElementsBaseVertex(GLenum mode, GLsizei count, GLenum type, const void *indices,      \
++    void drawElementsBaseVertex(PrimitiveMode modePacked, GLsizei count,                           \
++                                DrawElementsType typePacked, const void *indices,                  \
+                                 GLint basevertex);                                                 \
+-    void drawElementsInstancedBaseVertex(GLenum mode, GLsizei count, GLenum type,                  \
+-                                         const void *indices, GLsizei instancecount,               \
+-                                         GLint basevertex);                                        \
+-    void drawRangeElementsBaseVertex(GLenum mode, GLuint start, GLuint end, GLsizei count,         \
+-                                     GLenum type, const void *indices, GLint basevertex);          \
++    void drawElementsInstancedBaseVertex(PrimitiveMode modePacked, GLsizei count,                  \
++                                         DrawElementsType typePacked, const void *indices,         \
++                                         GLsizei instancecount, GLint basevertex);                 \
++    void drawRangeElementsBaseVertex(PrimitiveMode modePacked, GLuint start, GLuint end,           \
++                                     GLsizei count, DrawElementsType typePacked,                   \
++                                     const void *indices, GLint basevertex);                       \
+     void enablei(GLenum target, GLuint index);                                                     \
+     void framebufferTexture(GLenum target, GLenum attachment, TextureID texturePacked,             \
+                             GLint level);                                                          \
+diff --git a/src/libANGLE/capture_gles_3_2_autogen.cpp b/src/libANGLE/capture_gles_3_2_autogen.cpp
+index 2a096ac11..cc7fb7f47 100644
+--- a/src/libANGLE/capture_gles_3_2_autogen.cpp
++++ b/src/libANGLE/capture_gles_3_2_autogen.cpp
+@@ -231,22 +231,22 @@ CallCapture CaptureDisablei(const State &glState, bool isCallValid, GLenum targe
+ 
+ CallCapture CaptureDrawElementsBaseVertex(const State &glState,
+                                           bool isCallValid,
+-                                          GLenum mode,
++                                          PrimitiveMode modePacked,
+                                           GLsizei count,
+-                                          GLenum type,
++                                          DrawElementsType typePacked,
+                                           const void *indices,
+                                           GLint basevertex)
+ {
+     ParamBuffer paramBuffer;
+ 
+-    paramBuffer.addEnumParam("mode", GLenumGroup::PrimitiveType, ParamType::TGLenum, mode);
++    paramBuffer.addValueParam("modePacked", ParamType::TPrimitiveMode, modePacked);
+     paramBuffer.addValueParam("count", ParamType::TGLsizei, count);
+-    paramBuffer.addEnumParam("type", GLenumGroup::DrawElementsType, ParamType::TGLenum, type);
++    paramBuffer.addValueParam("typePacked", ParamType::TDrawElementsType, typePacked);
+ 
+     ParamCapture indicesParam("indices", ParamType::TvoidConstPointer);
+     InitParamValue(ParamType::TvoidConstPointer, indices, &indicesParam.value);
+-    CaptureDrawElementsBaseVertex_indices(glState, isCallValid, mode, count, type, indices,
+-                                          basevertex, &indicesParam);
++    CaptureDrawElementsBaseVertex_indices(glState, isCallValid, modePacked, count, typePacked,
++                                          indices, basevertex, &indicesParam);
+     paramBuffer.addParam(std::move(indicesParam));
+ 
+     paramBuffer.addValueParam("basevertex", ParamType::TGLint, basevertex);
+@@ -256,23 +256,24 @@ CallCapture CaptureDrawElementsBaseVertex(const State &glState,
+ 
+ CallCapture CaptureDrawElementsInstancedBaseVertex(const State &glState,
+                                                    bool isCallValid,
+-                                                   GLenum mode,
++                                                   PrimitiveMode modePacked,
+                                                    GLsizei count,
+-                                                   GLenum type,
++                                                   DrawElementsType typePacked,
+                                                    const void *indices,
+                                                    GLsizei instancecount,
+                                                    GLint basevertex)
+ {
+     ParamBuffer paramBuffer;
+ 
+-    paramBuffer.addEnumParam("mode", GLenumGroup::PrimitiveType, ParamType::TGLenum, mode);
++    paramBuffer.addValueParam("modePacked", ParamType::TPrimitiveMode, modePacked);
+     paramBuffer.addValueParam("count", ParamType::TGLsizei, count);
+-    paramBuffer.addEnumParam("type", GLenumGroup::DrawElementsType, ParamType::TGLenum, type);
++    paramBuffer.addValueParam("typePacked", ParamType::TDrawElementsType, typePacked);
+ 
+     ParamCapture indicesParam("indices", ParamType::TvoidConstPointer);
+     InitParamValue(ParamType::TvoidConstPointer, indices, &indicesParam.value);
+-    CaptureDrawElementsInstancedBaseVertex_indices(glState, isCallValid, mode, count, type, indices,
+-                                                   instancecount, basevertex, &indicesParam);
++    CaptureDrawElementsInstancedBaseVertex_indices(glState, isCallValid, modePacked, count,
++                                                   typePacked, indices, instancecount, basevertex,
++                                                   &indicesParam);
+     paramBuffer.addParam(std::move(indicesParam));
+ 
+     paramBuffer.addValueParam("instancecount", ParamType::TGLsizei, instancecount);
+@@ -283,26 +284,26 @@ CallCapture CaptureDrawElementsInstancedBaseVertex(const State &glState,
+ 
+ CallCapture CaptureDrawRangeElementsBaseVertex(const State &glState,
+                                                bool isCallValid,
+-                                               GLenum mode,
++                                               PrimitiveMode modePacked,
+                                                GLuint start,
+                                                GLuint end,
+                                                GLsizei count,
+-                                               GLenum type,
++                                               DrawElementsType typePacked,
+                                                const void *indices,
+                                                GLint basevertex)
+ {
+     ParamBuffer paramBuffer;
+ 
+-    paramBuffer.addEnumParam("mode", GLenumGroup::PrimitiveType, ParamType::TGLenum, mode);
++    paramBuffer.addValueParam("modePacked", ParamType::TPrimitiveMode, modePacked);
+     paramBuffer.addValueParam("start", ParamType::TGLuint, start);
+     paramBuffer.addValueParam("end", ParamType::TGLuint, end);
+     paramBuffer.addValueParam("count", ParamType::TGLsizei, count);
+-    paramBuffer.addEnumParam("type", GLenumGroup::DrawElementsType, ParamType::TGLenum, type);
++    paramBuffer.addValueParam("typePacked", ParamType::TDrawElementsType, typePacked);
+ 
+     ParamCapture indicesParam("indices", ParamType::TvoidConstPointer);
+     InitParamValue(ParamType::TvoidConstPointer, indices, &indicesParam.value);
+-    CaptureDrawRangeElementsBaseVertex_indices(glState, isCallValid, mode, start, end, count, type,
+-                                               indices, basevertex, &indicesParam);
++    CaptureDrawRangeElementsBaseVertex_indices(glState, isCallValid, modePacked, start, end, count,
++                                               typePacked, indices, basevertex, &indicesParam);
+     paramBuffer.addParam(std::move(indicesParam));
+ 
+     paramBuffer.addValueParam("basevertex", ParamType::TGLint, basevertex);
+diff --git a/src/libANGLE/capture_gles_3_2_autogen.h b/src/libANGLE/capture_gles_3_2_autogen.h
+index 00b5859ae..828c5589e 100644
+--- a/src/libANGLE/capture_gles_3_2_autogen.h
++++ b/src/libANGLE/capture_gles_3_2_autogen.h
+@@ -91,26 +91,26 @@ angle::CallCapture CaptureDisablei(const State &glState,
+                                    GLuint index);
+ angle::CallCapture CaptureDrawElementsBaseVertex(const State &glState,
+                                                  bool isCallValid,
+-                                                 GLenum mode,
++                                                 PrimitiveMode modePacked,
+                                                  GLsizei count,
+-                                                 GLenum type,
++                                                 DrawElementsType typePacked,
+                                                  const void *indices,
+                                                  GLint basevertex);
+ angle::CallCapture CaptureDrawElementsInstancedBaseVertex(const State &glState,
+                                                           bool isCallValid,
+-                                                          GLenum mode,
++                                                          PrimitiveMode modePacked,
+                                                           GLsizei count,
+-                                                          GLenum type,
++                                                          DrawElementsType typePacked,
+                                                           const void *indices,
+                                                           GLsizei instancecount,
+                                                           GLint basevertex);
+ angle::CallCapture CaptureDrawRangeElementsBaseVertex(const State &glState,
+                                                       bool isCallValid,
+-                                                      GLenum mode,
++                                                      PrimitiveMode modePacked,
+                                                       GLuint start,
+                                                       GLuint end,
+                                                       GLsizei count,
+-                                                      GLenum type,
++                                                      DrawElementsType typePacked,
+                                                       const void *indices,
+                                                       GLint basevertex);
+ angle::CallCapture CaptureEnablei(const State &glState,
+@@ -309,28 +309,28 @@ void CaptureDebugMessageInsert_buf(const State &glState,
+                                    angle::ParamCapture *paramCapture);
+ void CaptureDrawElementsBaseVertex_indices(const State &glState,
+                                            bool isCallValid,
+-                                           GLenum mode,
++                                           PrimitiveMode modePacked,
+                                            GLsizei count,
+-                                           GLenum type,
++                                           DrawElementsType typePacked,
+                                            const void *indices,
+                                            GLint basevertex,
+                                            angle::ParamCapture *paramCapture);
+ void CaptureDrawElementsInstancedBaseVertex_indices(const State &glState,
+                                                     bool isCallValid,
+-                                                    GLenum mode,
++                                                    PrimitiveMode modePacked,
+                                                     GLsizei count,
+-                                                    GLenum type,
++                                                    DrawElementsType typePacked,
+                                                     const void *indices,
+                                                     GLsizei instancecount,
+                                                     GLint basevertex,
+                                                     angle::ParamCapture *paramCapture);
+ void CaptureDrawRangeElementsBaseVertex_indices(const State &glState,
+                                                 bool isCallValid,
+-                                                GLenum mode,
++                                                PrimitiveMode modePacked,
+                                                 GLuint start,
+                                                 GLuint end,
+                                                 GLsizei count,
+-                                                GLenum type,
++                                                DrawElementsType typePacked,
+                                                 const void *indices,
+                                                 GLint basevertex,
+                                                 angle::ParamCapture *paramCapture);
+diff --git a/src/libANGLE/frame_capture_replay_autogen.cpp b/src/libANGLE/frame_capture_replay_autogen.cpp
+index 62687501c..c8504b5ec 100644
+--- a/src/libANGLE/frame_capture_replay_autogen.cpp
++++ b/src/libANGLE/frame_capture_replay_autogen.cpp
+@@ -695,9 +695,10 @@ void FrameCapture::ReplayCall(gl::Context *context,
+             break;
+         case gl::EntryPoint::DrawElementsBaseVertex:
+             context->drawElementsBaseVertex(
+-                params.getParam("mode", ParamType::TGLenum, 0).value.GLenumVal,
++                params.getParam("modePacked", ParamType::TPrimitiveMode, 0).value.PrimitiveModeVal,
+                 params.getParam("count", ParamType::TGLsizei, 1).value.GLsizeiVal,
+-                params.getParam("type", ParamType::TGLenum, 2).value.GLenumVal,
++                params.getParam("typePacked", ParamType::TDrawElementsType, 2)
++                    .value.DrawElementsTypeVal,
+                 replayContext->getAsConstPointer<const void *>(
+                     params.getParam("indices", ParamType::TvoidConstPointer, 3)),
+                 params.getParam("basevertex", ParamType::TGLint, 4).value.GLintVal);
+@@ -722,9 +723,10 @@ void FrameCapture::ReplayCall(gl::Context *context,
+             break;
+         case gl::EntryPoint::DrawElementsInstancedBaseVertex:
+             context->drawElementsInstancedBaseVertex(
+-                params.getParam("mode", ParamType::TGLenum, 0).value.GLenumVal,
++                params.getParam("modePacked", ParamType::TPrimitiveMode, 0).value.PrimitiveModeVal,
+                 params.getParam("count", ParamType::TGLsizei, 1).value.GLsizeiVal,
+-                params.getParam("type", ParamType::TGLenum, 2).value.GLenumVal,
++                params.getParam("typePacked", ParamType::TDrawElementsType, 2)
++                    .value.DrawElementsTypeVal,
+                 replayContext->getAsConstPointer<const void *>(
+                     params.getParam("indices", ParamType::TvoidConstPointer, 3)),
+                 params.getParam("instancecount", ParamType::TGLsizei, 4).value.GLsizeiVal,
+@@ -755,11 +757,12 @@ void FrameCapture::ReplayCall(gl::Context *context,
+             break;
+         case gl::EntryPoint::DrawRangeElementsBaseVertex:
+             context->drawRangeElementsBaseVertex(
+-                params.getParam("mode", ParamType::TGLenum, 0).value.GLenumVal,
++                params.getParam("modePacked", ParamType::TPrimitiveMode, 0).value.PrimitiveModeVal,
+                 params.getParam("start", ParamType::TGLuint, 1).value.GLuintVal,
+                 params.getParam("end", ParamType::TGLuint, 2).value.GLuintVal,
+                 params.getParam("count", ParamType::TGLsizei, 3).value.GLsizeiVal,
+-                params.getParam("type", ParamType::TGLenum, 4).value.GLenumVal,
++                params.getParam("typePacked", ParamType::TDrawElementsType, 4)
++                    .value.DrawElementsTypeVal,
+                 replayContext->getAsConstPointer<const void *>(
+                     params.getParam("indices", ParamType::TvoidConstPointer, 5)),
+                 params.getParam("basevertex", ParamType::TGLint, 6).value.GLintVal);
 diff --git a/src/libANGLE/renderer/ContextImpl.h b/src/libANGLE/renderer/ContextImpl.h
 index bac2cf740..5f04ba1a5 100644
 --- a/src/libANGLE/renderer/ContextImpl.h
@@ -1071,6 +1357,287 @@ index c9fe77bd4..5cfc8f9c6 100644
  ANGLE_INLINE void CommandBuffer::drawIndexedInstancedBaseVertexBaseInstance(uint32_t indexCount,
                                                                              uint32_t instanceCount,
                                                                              uint32_t firstIndex,
+diff --git a/src/libANGLE/validationES32_autogen.h b/src/libANGLE/validationES32_autogen.h
+index 86cdbfebd..07acd31ed 100644
+--- a/src/libANGLE/validationES32_autogen.h
++++ b/src/libANGLE/validationES32_autogen.h
+@@ -66,24 +66,24 @@ bool ValidateDebugMessageInsert(Context *context,
+                                 const GLchar *buf);
+ bool ValidateDisablei(Context *context, GLenum target, GLuint index);
+ bool ValidateDrawElementsBaseVertex(Context *context,
+-                                    GLenum mode,
++                                    PrimitiveMode modePacked,
+                                     GLsizei count,
+-                                    GLenum type,
++                                    DrawElementsType typePacked,
+                                     const void *indices,
+                                     GLint basevertex);
+ bool ValidateDrawElementsInstancedBaseVertex(Context *context,
+-                                             GLenum mode,
++                                             PrimitiveMode modePacked,
+                                              GLsizei count,
+-                                             GLenum type,
++                                             DrawElementsType typePacked,
+                                              const void *indices,
+                                              GLsizei instancecount,
+                                              GLint basevertex);
+ bool ValidateDrawRangeElementsBaseVertex(Context *context,
+-                                         GLenum mode,
++                                         PrimitiveMode modePacked,
+                                          GLuint start,
+                                          GLuint end,
+                                          GLsizei count,
+-                                         GLenum type,
++                                         DrawElementsType typePacked,
+                                          const void *indices,
+                                          GLint basevertex);
+ bool ValidateEnablei(Context *context, GLenum target, GLuint index);
+diff --git a/src/libGL/entry_points_gl_3_2_autogen.cpp b/src/libGL/entry_points_gl_3_2_autogen.cpp
+index 55fd3c22a..8ec968dd5 100644
+--- a/src/libGL/entry_points_gl_3_2_autogen.cpp
++++ b/src/libGL/entry_points_gl_3_2_autogen.cpp
+@@ -93,16 +93,18 @@ void GL_APIENTRY DrawElementsBaseVertex(GLenum mode,
+ 
+     if (context)
+     {
++        PrimitiveMode modePacked                      = FromGL<PrimitiveMode>(mode);
++        DrawElementsType typePacked                   = FromGL<DrawElementsType>(type);
+         std::unique_lock<std::mutex> shareContextLock = GetShareGroupLock(context);
+-        bool isCallValid =
+-            (context->skipValidation() ||
+-             ValidateDrawElementsBaseVertex(context, mode, count, type, indices, basevertex));
++        bool isCallValid                              = (context->skipValidation() ||
++                            ValidateDrawElementsBaseVertex(context, modePacked, count, typePacked,
++                                                           indices, basevertex));
+         if (isCallValid)
+         {
+-            context->drawElementsBaseVertex(mode, count, type, indices, basevertex);
++            context->drawElementsBaseVertex(modePacked, count, typePacked, indices, basevertex);
+         }
+-        ANGLE_CAPTURE(DrawElementsBaseVertex, isCallValid, context, mode, count, type, indices,
+-                      basevertex);
++        ANGLE_CAPTURE(DrawElementsBaseVertex, isCallValid, context, modePacked, count, typePacked,
++                      indices, basevertex);
+     }
+ }
+ 
+@@ -123,17 +125,19 @@ void GL_APIENTRY DrawElementsInstancedBaseVertex(GLenum mode,
+ 
+     if (context)
+     {
++        PrimitiveMode modePacked                      = FromGL<PrimitiveMode>(mode);
++        DrawElementsType typePacked                   = FromGL<DrawElementsType>(type);
+         std::unique_lock<std::mutex> shareContextLock = GetShareGroupLock(context);
+-        bool isCallValid                              = (context->skipValidation() ||
+-                            ValidateDrawElementsInstancedBaseVertex(
+-                                context, mode, count, type, indices, instancecount, basevertex));
++        bool isCallValid = (context->skipValidation() || ValidateDrawElementsInstancedBaseVertex(
++                                                             context, modePacked, count, typePacked,
++                                                             indices, instancecount, basevertex));
+         if (isCallValid)
+         {
+-            context->drawElementsInstancedBaseVertex(mode, count, type, indices, instancecount,
+-                                                     basevertex);
++            context->drawElementsInstancedBaseVertex(modePacked, count, typePacked, indices,
++                                                     instancecount, basevertex);
+         }
+-        ANGLE_CAPTURE(DrawElementsInstancedBaseVertex, isCallValid, context, mode, count, type,
+-                      indices, instancecount, basevertex);
++        ANGLE_CAPTURE(DrawElementsInstancedBaseVertex, isCallValid, context, modePacked, count,
++                      typePacked, indices, instancecount, basevertex);
+     }
+ }
+ 
+@@ -154,17 +158,19 @@ void GL_APIENTRY DrawRangeElementsBaseVertex(GLenum mode,
+ 
+     if (context)
+     {
++        PrimitiveMode modePacked                      = FromGL<PrimitiveMode>(mode);
++        DrawElementsType typePacked                   = FromGL<DrawElementsType>(type);
+         std::unique_lock<std::mutex> shareContextLock = GetShareGroupLock(context);
+-        bool isCallValid                              = (context->skipValidation() ||
+-                            ValidateDrawRangeElementsBaseVertex(context, mode, start, end, count,
+-                                                                type, indices, basevertex));
++        bool isCallValid = (context->skipValidation() || ValidateDrawRangeElementsBaseVertex(
++                                                             context, modePacked, start, end, count,
++                                                             typePacked, indices, basevertex));
+         if (isCallValid)
+         {
+-            context->drawRangeElementsBaseVertex(mode, start, end, count, type, indices,
++            context->drawRangeElementsBaseVertex(modePacked, start, end, count, typePacked, indices,
+                                                  basevertex);
+         }
+-        ANGLE_CAPTURE(DrawRangeElementsBaseVertex, isCallValid, context, mode, start, end, count,
+-                      type, indices, basevertex);
++        ANGLE_CAPTURE(DrawRangeElementsBaseVertex, isCallValid, context, modePacked, start, end,
++                      count, typePacked, indices, basevertex);
+     }
+ }
+ 
+diff --git a/src/libGLESv2/entry_points_gles_3_2_autogen.cpp b/src/libGLESv2/entry_points_gles_3_2_autogen.cpp
+index 780ce98a6..2087e9c7d 100644
+--- a/src/libGLESv2/entry_points_gles_3_2_autogen.cpp
++++ b/src/libGLESv2/entry_points_gles_3_2_autogen.cpp
+@@ -307,16 +307,18 @@ void GL_APIENTRY DrawElementsBaseVertex(GLenum mode,
+ 
+     if (context)
+     {
++        PrimitiveMode modePacked                      = FromGL<PrimitiveMode>(mode);
++        DrawElementsType typePacked                   = FromGL<DrawElementsType>(type);
+         std::unique_lock<std::mutex> shareContextLock = GetShareGroupLock(context);
+-        bool isCallValid =
+-            (context->skipValidation() ||
+-             ValidateDrawElementsBaseVertex(context, mode, count, type, indices, basevertex));
++        bool isCallValid                              = (context->skipValidation() ||
++                            ValidateDrawElementsBaseVertex(context, modePacked, count, typePacked,
++                                                           indices, basevertex));
+         if (isCallValid)
+         {
+-            context->drawElementsBaseVertex(mode, count, type, indices, basevertex);
++            context->drawElementsBaseVertex(modePacked, count, typePacked, indices, basevertex);
+         }
+-        ANGLE_CAPTURE(DrawElementsBaseVertex, isCallValid, context, mode, count, type, indices,
+-                      basevertex);
++        ANGLE_CAPTURE(DrawElementsBaseVertex, isCallValid, context, modePacked, count, typePacked,
++                      indices, basevertex);
+     }
+ }
+ 
+@@ -337,17 +339,19 @@ void GL_APIENTRY DrawElementsInstancedBaseVertex(GLenum mode,
+ 
+     if (context)
+     {
++        PrimitiveMode modePacked                      = FromGL<PrimitiveMode>(mode);
++        DrawElementsType typePacked                   = FromGL<DrawElementsType>(type);
+         std::unique_lock<std::mutex> shareContextLock = GetShareGroupLock(context);
+-        bool isCallValid                              = (context->skipValidation() ||
+-                            ValidateDrawElementsInstancedBaseVertex(
+-                                context, mode, count, type, indices, instancecount, basevertex));
++        bool isCallValid = (context->skipValidation() || ValidateDrawElementsInstancedBaseVertex(
++                                                             context, modePacked, count, typePacked,
++                                                             indices, instancecount, basevertex));
+         if (isCallValid)
+         {
+-            context->drawElementsInstancedBaseVertex(mode, count, type, indices, instancecount,
+-                                                     basevertex);
++            context->drawElementsInstancedBaseVertex(modePacked, count, typePacked, indices,
++                                                     instancecount, basevertex);
+         }
+-        ANGLE_CAPTURE(DrawElementsInstancedBaseVertex, isCallValid, context, mode, count, type,
+-                      indices, instancecount, basevertex);
++        ANGLE_CAPTURE(DrawElementsInstancedBaseVertex, isCallValid, context, modePacked, count,
++                      typePacked, indices, instancecount, basevertex);
+     }
+ }
+ 
+@@ -368,17 +372,19 @@ void GL_APIENTRY DrawRangeElementsBaseVertex(GLenum mode,
+ 
+     if (context)
+     {
++        PrimitiveMode modePacked                      = FromGL<PrimitiveMode>(mode);
++        DrawElementsType typePacked                   = FromGL<DrawElementsType>(type);
+         std::unique_lock<std::mutex> shareContextLock = GetShareGroupLock(context);
+-        bool isCallValid                              = (context->skipValidation() ||
+-                            ValidateDrawRangeElementsBaseVertex(context, mode, start, end, count,
+-                                                                type, indices, basevertex));
++        bool isCallValid = (context->skipValidation() || ValidateDrawRangeElementsBaseVertex(
++                                                             context, modePacked, start, end, count,
++                                                             typePacked, indices, basevertex));
+         if (isCallValid)
+         {
+-            context->drawRangeElementsBaseVertex(mode, start, end, count, type, indices,
++            context->drawRangeElementsBaseVertex(modePacked, start, end, count, typePacked, indices,
+                                                  basevertex);
+         }
+-        ANGLE_CAPTURE(DrawRangeElementsBaseVertex, isCallValid, context, mode, start, end, count,
+-                      type, indices, basevertex);
++        ANGLE_CAPTURE(DrawRangeElementsBaseVertex, isCallValid, context, modePacked, start, end,
++                      count, typePacked, indices, basevertex);
+     }
+ }
+ 
+diff --git a/src/libGLESv2/entry_points_gles_ext_autogen.cpp b/src/libGLESv2/entry_points_gles_ext_autogen.cpp
+index 7e022dd44..5c8aed398 100644
+--- a/src/libGLESv2/entry_points_gles_ext_autogen.cpp
++++ b/src/libGLESv2/entry_points_gles_ext_autogen.cpp
+@@ -10501,16 +10501,18 @@ void GL_APIENTRY DrawElementsBaseVertexContextANGLE(GLeglContext ctx,
+     if (context)
+     {
+         ASSERT(context == GetValidGlobalContext());
++        PrimitiveMode modePacked                      = FromGL<PrimitiveMode>(mode);
++        DrawElementsType typePacked                   = FromGL<DrawElementsType>(type);
+         std::unique_lock<std::mutex> shareContextLock = GetShareGroupLock(context);
+-        bool isCallValid =
+-            (context->skipValidation() ||
+-             ValidateDrawElementsBaseVertex(context, mode, count, type, indices, basevertex));
++        bool isCallValid                              = (context->skipValidation() ||
++                            ValidateDrawElementsBaseVertex(context, modePacked, count, typePacked,
++                                                           indices, basevertex));
+         if (isCallValid)
+         {
+-            context->drawElementsBaseVertex(mode, count, type, indices, basevertex);
++            context->drawElementsBaseVertex(modePacked, count, typePacked, indices, basevertex);
+         }
+-        ANGLE_CAPTURE(DrawElementsBaseVertex, isCallValid, context, mode, count, type, indices,
+-                      basevertex);
++        ANGLE_CAPTURE(DrawElementsBaseVertex, isCallValid, context, modePacked, count, typePacked,
++                      indices, basevertex);
+     }
+ }
+ 
+@@ -10626,17 +10628,19 @@ void GL_APIENTRY DrawElementsInstancedBaseVertexContextANGLE(GLeglContext ctx,
+     if (context)
+     {
+         ASSERT(context == GetValidGlobalContext());
++        PrimitiveMode modePacked                      = FromGL<PrimitiveMode>(mode);
++        DrawElementsType typePacked                   = FromGL<DrawElementsType>(type);
+         std::unique_lock<std::mutex> shareContextLock = GetShareGroupLock(context);
+-        bool isCallValid                              = (context->skipValidation() ||
+-                            ValidateDrawElementsInstancedBaseVertex(
+-                                context, mode, count, type, indices, instancecount, basevertex));
++        bool isCallValid = (context->skipValidation() || ValidateDrawElementsInstancedBaseVertex(
++                                                             context, modePacked, count, typePacked,
++                                                             indices, instancecount, basevertex));
+         if (isCallValid)
+         {
+-            context->drawElementsInstancedBaseVertex(mode, count, type, indices, instancecount,
+-                                                     basevertex);
++            context->drawElementsInstancedBaseVertex(modePacked, count, typePacked, indices,
++                                                     instancecount, basevertex);
+         }
+-        ANGLE_CAPTURE(DrawElementsInstancedBaseVertex, isCallValid, context, mode, count, type,
+-                      indices, instancecount, basevertex);
++        ANGLE_CAPTURE(DrawElementsInstancedBaseVertex, isCallValid, context, modePacked, count,
++                      typePacked, indices, instancecount, basevertex);
+     }
+ }
+ 
+@@ -10724,17 +10728,19 @@ void GL_APIENTRY DrawRangeElementsBaseVertexContextANGLE(GLeglContext ctx,
+     if (context)
+     {
+         ASSERT(context == GetValidGlobalContext());
++        PrimitiveMode modePacked                      = FromGL<PrimitiveMode>(mode);
++        DrawElementsType typePacked                   = FromGL<DrawElementsType>(type);
+         std::unique_lock<std::mutex> shareContextLock = GetShareGroupLock(context);
+-        bool isCallValid                              = (context->skipValidation() ||
+-                            ValidateDrawRangeElementsBaseVertex(context, mode, start, end, count,
+-                                                                type, indices, basevertex));
++        bool isCallValid = (context->skipValidation() || ValidateDrawRangeElementsBaseVertex(
++                                                             context, modePacked, start, end, count,
++                                                             typePacked, indices, basevertex));
+         if (isCallValid)
+         {
+-            context->drawRangeElementsBaseVertex(mode, start, end, count, type, indices,
++            context->drawRangeElementsBaseVertex(modePacked, start, end, count, typePacked, indices,
+                                                  basevertex);
+         }
+-        ANGLE_CAPTURE(DrawRangeElementsBaseVertex, isCallValid, context, mode, start, end, count,
+-                      type, indices, basevertex);
++        ANGLE_CAPTURE(DrawRangeElementsBaseVertex, isCallValid, context, modePacked, start, end,
++                      count, typePacked, indices, basevertex);
+     }
+ }
+ 
 -- 
 2.21.0
 
