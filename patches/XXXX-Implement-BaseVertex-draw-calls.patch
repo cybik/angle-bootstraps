@@ -1,4 +1,4 @@
-From 2b73eecac6500f7685489435353dbccd4189f03e Mon Sep 17 00:00:00 2001
+From 566cd67703322e546fb2aa72d96b07f358726c78 Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls
@@ -74,7 +74,7 @@ index 1761267ab..19f16e85e 100644
          "id": "TransformFeedbackID"
      },
 diff --git a/src/libANGLE/Context.cpp b/src/libANGLE/Context.cpp
-index 8750e695a..025c333ab 100644
+index 8750e695a..36b46401b 100644
 --- a/src/libANGLE/Context.cpp
 +++ b/src/libANGLE/Context.cpp
 @@ -2299,23 +2299,41 @@ void Context::drawElementsInstanced(PrimitiveMode mode,
@@ -98,7 +98,7 @@ index 8750e695a..025c333ab 100644
 +
 +    ANGLE_CONTEXT_TRY(prepareForDraw(mode));
 +    ANGLE_CONTEXT_TRY(
-+        mImplementation->drawElementsBaseVertex(this, mode, count, type, indices, baseVertex));
++        mImplementation->drawElementsBaseVertex(this, mode, count, type, indices, basevertex));
 +    MarkShaderStorageBufferUsage(this);
  }
  
@@ -120,7 +120,7 @@ index 8750e695a..025c333ab 100644
 +
 +    ANGLE_CONTEXT_TRY(prepareForDraw(mode));
 +    ANGLE_CONTEXT_TRY(mImplementation->drawElementsInstancedBaseVertex(
-+        this, mode, count, type, indices, instancecount, baseVertex));
++        this, mode, count, type, indices, instancecount, basevertex));
 +    MarkShaderStorageBufferUsage(this);
  }
  
@@ -148,7 +148,7 @@ index 8750e695a..025c333ab 100644
 +
 +    ANGLE_CONTEXT_TRY(prepareForDraw(mode));
 +    ANGLE_CONTEXT_TRY(mImplementation->drawRangeElementsBaseVertex(this, mode, start, end, count,
-+                                                                   type, indices, baseVertex));
++                                                                   type, indices, basevertex));
 +    MarkShaderStorageBufferUsage(this);
  }
  
