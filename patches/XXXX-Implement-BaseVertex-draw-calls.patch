@@ -1,0 +1,1052 @@
+From 30dc9aa71018fead3a2966d8f62ea4a6096510c6 Mon Sep 17 00:00:00 2001
+From: Ethan Lee <flibitijibibo@gmail.com>
+Date: Thu, 21 Nov 2019 11:37:17 -0500
+Subject: [PATCH] Implement BaseVertex draw calls
+
+Bug: angleproject:3582
+Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
+---
+ src/libANGLE/Context.cpp                      | 33 +++++++-
+ src/libANGLE/renderer/ContextImpl.h           | 21 +++++
+ src/libANGLE/renderer/d3d/d3d11/Context11.cpp | 33 ++++++++
+ src/libANGLE/renderer/d3d/d3d11/Context11.h   | 21 +++++
+ src/libANGLE/renderer/d3d/d3d9/Context9.cpp   | 36 ++++++++
+ src/libANGLE/renderer/d3d/d3d9/Context9.h     | 21 +++++
+ src/libANGLE/renderer/gl/ContextGL.cpp        | 83 +++++++++++++++++++
+ src/libANGLE/renderer/gl/ContextGL.h          | 21 +++++
+ src/libANGLE/renderer/metal/ContextMtl.h      | 21 +++++
+ src/libANGLE/renderer/metal/ContextMtl.mm     | 36 ++++++++
+ src/libANGLE/renderer/null/ContextNULL.cpp    | 32 +++++++
+ src/libANGLE/renderer/null/ContextNULL.h      | 21 +++++
+ src/libANGLE/renderer/vulkan/ContextVk.cpp    | 65 ++++++++++++++-
+ src/libANGLE/renderer/vulkan/ContextVk.h      | 21 +++++
+ .../vulkan/SecondaryCommandBuffer.cpp         | 15 ++++
+ .../renderer/vulkan/SecondaryCommandBuffer.h  | 43 ++++++++++
+ src/libANGLE/renderer/vulkan/vk_helpers.cpp   |  4 +-
+ src/libANGLE/renderer/vulkan/vk_helpers.h     |  2 +-
+ src/libANGLE/renderer/vulkan/vk_wrapper.h     | 18 ++++
+ 19 files changed, 539 insertions(+), 8 deletions(-)
+
+diff --git a/src/libANGLE/Context.cpp b/src/libANGLE/Context.cpp
+index 8750e695a..bb9fe052e 100644
+--- a/src/libANGLE/Context.cpp
++++ b/src/libANGLE/Context.cpp
+@@ -2305,7 +2305,16 @@ void Context::drawElementsBaseVertex(GLenum mode,
+                                      const void *indices,
+                                      GLint basevertex)
+ {
+-    UNIMPLEMENTED();
++    // No-op if count draws no primitives for given mode
++    if (noopDraw(mode, count))
++    {
++        return;
++    }
++
++    ANGLE_CONTEXT_TRY(prepareForDraw(mode));
++    ANGLE_CONTEXT_TRY(
++        mImplementation->drawElementsBaseVertex(this, mode, count, type, indices, baseVertex));
++    MarkShaderStorageBufferUsage(this);
+ }
+ 
+ void Context::drawElementsInstancedBaseVertex(GLenum mode,
+@@ -2315,7 +2324,16 @@ void Context::drawElementsInstancedBaseVertex(GLenum mode,
+                                               GLsizei instancecount,
+                                               GLint basevertex)
+ {
+-    UNIMPLEMENTED();
++    // No-op if count draws no primitives for given mode
++    if (noopDrawInstanced(mode, count, instancecount))
++    {
++        return;
++    }
++
++    ANGLE_CONTEXT_TRY(prepareForDraw(mode));
++    ANGLE_CONTEXT_TRY(mImplementation->drawElementsInstancedBaseVertex(
++        this, mode, count, type, indices, instancecount, baseVertex));
++    MarkShaderStorageBufferUsage(this);
+ }
+ 
+ void Context::drawRangeElements(PrimitiveMode mode,
+@@ -2345,7 +2363,16 @@ void Context::drawRangeElementsBaseVertex(GLenum mode,
+                                           const void *indices,
+                                           GLint basevertex)
+ {
+-    UNIMPLEMENTED();
++    // No-op if count draws no primitives for given mode
++    if (noopDraw(mode, count))
++    {
++        return;
++    }
++
++    ANGLE_CONTEXT_TRY(prepareForDraw(mode));
++    ANGLE_CONTEXT_TRY(mImplementation->drawRangeElementsBaseVertex(this, mode, start, end, count,
++                                                                   type, indices, baseVertex));
++    MarkShaderStorageBufferUsage(this);
+ }
+ 
+ void Context::drawArraysIndirect(PrimitiveMode mode, const void *indirect)
+diff --git a/src/libANGLE/renderer/ContextImpl.h b/src/libANGLE/renderer/ContextImpl.h
+index bac2cf740..5f04ba1a5 100644
+--- a/src/libANGLE/renderer/ContextImpl.h
++++ b/src/libANGLE/renderer/ContextImpl.h
+@@ -64,12 +64,25 @@ class ContextImpl : public GLImplFactory
+                                        GLsizei count,
+                                        gl::DrawElementsType type,
+                                        const void *indices)                                = 0;
++    virtual angle::Result drawElementsBaseVertex(const gl::Context *context,
++                                                 gl::PrimitiveMode mode,
++                                                 GLsizei count,
++                                                 gl::DrawElementsType type,
++                                                 const void *indices,
++                                                 GLint baseVertex)                         = 0;
+     virtual angle::Result drawElementsInstanced(const gl::Context *context,
+                                                 gl::PrimitiveMode mode,
+                                                 GLsizei count,
+                                                 gl::DrawElementsType type,
+                                                 const void *indices,
+                                                 GLsizei instances)                         = 0;
++    virtual angle::Result drawElementsInstancedBaseVertex(const gl::Context *context,
++                                                          gl::PrimitiveMode mode,
++                                                          GLsizei count,
++                                                          gl::DrawElementsType type,
++                                                          const void *indices,
++                                                          GLsizei instances,
++                                                          GLint baseVertex)                = 0;
+     virtual angle::Result drawElementsInstancedBaseVertexBaseInstance(const gl::Context *context,
+                                                                       gl::PrimitiveMode mode,
+                                                                       GLsizei count,
+@@ -85,6 +98,14 @@ class ContextImpl : public GLImplFactory
+                                             GLsizei count,
+                                             gl::DrawElementsType type,
+                                             const void *indices)                           = 0;
++    virtual angle::Result drawRangeElementsBaseVertex(const gl::Context *context,
++                                                      gl::PrimitiveMode mode,
++                                                      GLuint start,
++                                                      GLuint end,
++                                                      GLsizei count,
++                                                      gl::DrawElementsType type,
++                                                      const void *indices,
++                                                      GLint baseVertex)                    = 0;
+ 
+     virtual angle::Result drawArraysIndirect(const gl::Context *context,
+                                              gl::PrimitiveMode mode,
+diff --git a/src/libANGLE/renderer/d3d/d3d11/Context11.cpp b/src/libANGLE/renderer/d3d/d3d11/Context11.cpp
+index 4cc0faa0e..a3eb29d6c 100644
+--- a/src/libANGLE/renderer/d3d/d3d11/Context11.cpp
++++ b/src/libANGLE/renderer/d3d/d3d11/Context11.cpp
+@@ -337,6 +337,16 @@ angle::Result Context11::drawElements(const gl::Context *context,
+     return drawElementsImpl(context, mode, count, type, indices, 0, 0, 0);
+ }
+ 
++angle::Result Context11::drawElementsBaseVertex(const gl::Context *context,
++                                                gl::PrimitiveMode mode,
++                                                GLsizei count,
++                                                gl::DrawElementsType type,
++                                                const void *indices,
++                                                GLint baseVertex)
++{
++    return drawElementsImpl(context, mode, count, type, indices, 0, baseVertex, 0);
++}
++
+ angle::Result Context11::drawElementsInstanced(const gl::Context *context,
+                                                gl::PrimitiveMode mode,
+                                                GLsizei count,
+@@ -347,6 +357,17 @@ angle::Result Context11::drawElementsInstanced(const gl::Context *context,
+     return drawElementsImpl(context, mode, count, type, indices, instances, 0, 0);
+ }
+ 
++angle::Result Context11::drawElementsInstancedBaseVertex(const gl::Context *context,
++                                                         gl::PrimitiveMode mode,
++                                                         GLsizei count,
++                                                         gl::DrawElementsType type,
++                                                         const void *indices,
++                                                         GLsizei instances,
++                                                         GLint baseVertex)
++{
++    return drawElementsImpl(context, mode, count, type, indices, instances, baseVertex, 0);
++}
++
+ angle::Result Context11::drawElementsInstancedBaseVertexBaseInstance(const gl::Context *context,
+                                                                      gl::PrimitiveMode mode,
+                                                                      GLsizei count,
+@@ -371,6 +392,18 @@ angle::Result Context11::drawRangeElements(const gl::Context *context,
+     return drawElementsImpl(context, mode, count, type, indices, 0, 0, 0);
+ }
+ 
++angle::Result Context11::drawRangeElementsBaseVertex(const gl::Context *context,
++                                                     gl::PrimitiveMode mode,
++                                                     GLuint start,
++                                                     GLuint end,
++                                                     GLsizei count,
++                                                     gl::DrawElementsType type,
++                                                     const void *indices,
++                                                     GLint baseVertex)
++{
++    return drawElementsImpl(context, mode, count, type, indices, 0, baseVertex, 0);
++}
++
+ angle::Result Context11::drawArraysIndirect(const gl::Context *context,
+                                             gl::PrimitiveMode mode,
+                                             const void *indirect)
+diff --git a/src/libANGLE/renderer/d3d/d3d11/Context11.h b/src/libANGLE/renderer/d3d/d3d11/Context11.h
+index 4f89a2a6f..33d9f88e1 100644
+--- a/src/libANGLE/renderer/d3d/d3d11/Context11.h
++++ b/src/libANGLE/renderer/d3d/d3d11/Context11.h
+@@ -100,12 +100,25 @@ class Context11 : public ContextD3D, public MultisampleTextureInitializer
+                                GLsizei count,
+                                gl::DrawElementsType type,
+                                const void *indices) override;
++    angle::Result drawElementsBaseVertex(const gl::Context *context,
++                                         gl::PrimitiveMode mode,
++                                         GLsizei count,
++                                         gl::DrawElementsType type,
++                                         const void *indices,
++                                         GLint baseVertex) override;
+     angle::Result drawElementsInstanced(const gl::Context *context,
+                                         gl::PrimitiveMode mode,
+                                         GLsizei count,
+                                         gl::DrawElementsType type,
+                                         const void *indices,
+                                         GLsizei instances) override;
++    angle::Result drawElementsInstancedBaseVertex(const gl::Context *context,
++                                                  gl::PrimitiveMode mode,
++                                                  GLsizei count,
++                                                  gl::DrawElementsType type,
++                                                  const void *indices,
++                                                  GLsizei instances,
++                                                  GLint baseVertex) override;
+     angle::Result drawElementsInstancedBaseVertexBaseInstance(const gl::Context *context,
+                                                               gl::PrimitiveMode mode,
+                                                               GLsizei count,
+@@ -121,6 +134,14 @@ class Context11 : public ContextD3D, public MultisampleTextureInitializer
+                                     GLsizei count,
+                                     gl::DrawElementsType type,
+                                     const void *indices) override;
++    angle::Result drawRangeElementsBaseVertex(const gl::Context *context,
++                                              gl::PrimitiveMode mode,
++                                              GLuint start,
++                                              GLuint end,
++                                              GLsizei count,
++                                              gl::DrawElementsType type,
++                                              const void *indices,
++                                              GLint baseVertex) override;
+     angle::Result drawArraysIndirect(const gl::Context *context,
+                                      gl::PrimitiveMode mode,
+                                      const void *indirect) override;
+diff --git a/src/libANGLE/renderer/d3d/d3d9/Context9.cpp b/src/libANGLE/renderer/d3d/d3d9/Context9.cpp
+index 5908fa7ce..1c603ce0b 100644
+--- a/src/libANGLE/renderer/d3d/d3d9/Context9.cpp
++++ b/src/libANGLE/renderer/d3d/d3d9/Context9.cpp
+@@ -199,6 +199,17 @@ angle::Result Context9::drawElements(const gl::Context *context,
+     return mRenderer->genericDrawElements(context, mode, count, type, indices, 0);
+ }
+ 
++angle::Result Context9::drawElementsBaseVertex(const gl::Context *context,
++                                               gl::PrimitiveMode mode,
++                                               GLsizei count,
++                                               gl::DrawElementsType type,
++                                               const void *indices,
++                                               GLint baseVertex)
++{
++    ANGLE_HR_UNREACHABLE(this);
++    return angle::Result::Continue;
++}
++
+ angle::Result Context9::drawElementsInstanced(const gl::Context *context,
+                                               gl::PrimitiveMode mode,
+                                               GLsizei count,
+@@ -209,6 +220,18 @@ angle::Result Context9::drawElementsInstanced(const gl::Context *context,
+     return mRenderer->genericDrawElements(context, mode, count, type, indices, instances);
+ }
+ 
++angle::Result Context9::drawElementsInstancedBaseVertex(const gl::Context *context,
++                                                        gl::PrimitiveMode mode,
++                                                        GLsizei count,
++                                                        gl::DrawElementsType type,
++                                                        const void *indices,
++                                                        GLsizei instances,
++                                                        GLint baseVertex)
++{
++    ANGLE_HR_UNREACHABLE(this);
++    return angle::Result::Continue;
++}
++
+ angle::Result Context9::drawElementsInstancedBaseVertexBaseInstance(const gl::Context *context,
+                                                                     gl::PrimitiveMode mode,
+                                                                     GLsizei count,
+@@ -233,6 +256,19 @@ angle::Result Context9::drawRangeElements(const gl::Context *context,
+     return mRenderer->genericDrawElements(context, mode, count, type, indices, 0);
+ }
+ 
++angle::Result Context9::drawRangeElementsBaseVertex(const gl::Context *context,
++                                                    gl::PrimitiveMode mode,
++                                                    GLuint start,
++                                                    GLuint end,
++                                                    GLsizei count,
++                                                    gl::DrawElementsType type,
++                                                    const void *indices,
++                                                    GLint baseVertex)
++{
++    ANGLE_HR_UNREACHABLE(this);
++    return angle::Result::Continue;
++}
++
+ angle::Result Context9::drawArraysIndirect(const gl::Context *context,
+                                            gl::PrimitiveMode mode,
+                                            const void *indirect)
+diff --git a/src/libANGLE/renderer/d3d/d3d9/Context9.h b/src/libANGLE/renderer/d3d/d3d9/Context9.h
+index f0963d6f4..9f723a3a4 100644
+--- a/src/libANGLE/renderer/d3d/d3d9/Context9.h
++++ b/src/libANGLE/renderer/d3d/d3d9/Context9.h
+@@ -99,12 +99,25 @@ class Context9 : public ContextD3D
+                                GLsizei count,
+                                gl::DrawElementsType type,
+                                const void *indices) override;
++    angle::Result drawElementsBaseVertex(const gl::Context *context,
++                                         gl::PrimitiveMode mode,
++                                         GLsizei count,
++                                         gl::DrawElementsType type,
++                                         const void *indices,
++                                         GLint baseVertex) override;
+     angle::Result drawElementsInstanced(const gl::Context *context,
+                                         gl::PrimitiveMode mode,
+                                         GLsizei count,
+                                         gl::DrawElementsType type,
+                                         const void *indices,
+                                         GLsizei instances) override;
++    angle::Result drawElementsInstancedBaseVertex(const gl::Context *context,
++                                                  gl::PrimitiveMode mode,
++                                                  GLsizei count,
++                                                  gl::DrawElementsType type,
++                                                  const void *indices,
++                                                  GLsizei instances,
++                                                  GLint baseVertex) override;
+     angle::Result drawElementsInstancedBaseVertexBaseInstance(const gl::Context *context,
+                                                               gl::PrimitiveMode mode,
+                                                               GLsizei count,
+@@ -120,6 +133,14 @@ class Context9 : public ContextD3D
+                                     GLsizei count,
+                                     gl::DrawElementsType type,
+                                     const void *indices) override;
++    angle::Result drawRangeElementsBaseVertex(const gl::Context *context,
++                                              gl::PrimitiveMode mode,
++                                              GLuint start,
++                                              GLuint end,
++                                              GLsizei count,
++                                              gl::DrawElementsType type,
++                                              const void *indices,
++                                              GLint baseVertex) override;
+     angle::Result drawArraysIndirect(const gl::Context *context,
+                                      gl::PrimitiveMode mode,
+                                      const void *indirect) override;
+diff --git a/src/libANGLE/renderer/gl/ContextGL.cpp b/src/libANGLE/renderer/gl/ContextGL.cpp
+index 6e4b2ca22..7c5ec13c7 100644
+--- a/src/libANGLE/renderer/gl/ContextGL.cpp
++++ b/src/libANGLE/renderer/gl/ContextGL.cpp
+@@ -469,6 +469,37 @@ angle::Result ContextGL::drawElements(const gl::Context *context,
+     return angle::Result::Continue;
+ }
+ 
++angle::Result ContextGL::drawElementsBaseVertex(const gl::Context *context,
++                                                gl::PrimitiveMode mode,
++                                                GLsizei count,
++                                                gl::DrawElementsType type,
++                                                const void *indices,
++                                                GLint baseVertex)
++{
++    const gl::State &glState    = context->getState();
++    const gl::Program *program  = glState.getProgram();
++    const bool usesMultiview    = program->usesMultiview();
++    const GLsizei instanceCount = usesMultiview ? program->getNumViews() : 0;
++    const void *drawIndexPtr    = nullptr;
++
++#if defined(ANGLE_STATE_VALIDATION_ENABLED)
++    validateState();
++#endif  // ANGLE_STATE_VALIDATION_ENABLED
++
++    ANGLE_TRY(setDrawElementsState(context, count, type, indices, instanceCount, &drawIndexPtr));
++    if (!usesMultiview)
++    {
++        getFunctions()->drawElementsBaseVertex(ToGLenum(mode), count, ToGLenum(type), drawIndexPtr,
++                                               baseVertex);
++    }
++    else
++    {
++        getFunctions()->drawElementsInstancedBaseVertex(ToGLenum(mode), count, ToGLenum(type),
++                                                        drawIndexPtr, instanceCount, baseVertex);
++    }
++    return angle::Result::Continue;
++}
++
+ angle::Result ContextGL::drawElementsInstanced(const gl::Context *context,
+                                                gl::PrimitiveMode mode,
+                                                GLsizei count,
+@@ -491,6 +522,29 @@ angle::Result ContextGL::drawElementsInstanced(const gl::Context *context,
+     return angle::Result::Continue;
+ }
+ 
++angle::Result ContextGL::drawElementsInstancedBaseVertex(const gl::Context *context,
++                                                         gl::PrimitiveMode mode,
++                                                         GLsizei count,
++                                                         gl::DrawElementsType type,
++                                                         const void *indices,
++                                                         GLsizei instances,
++                                                         GLint baseVertex)
++{
++    GLsizei adjustedInstanceCount = instances;
++    const gl::Program *program    = context->getState().getProgram();
++    if (program->usesMultiview())
++    {
++        adjustedInstanceCount *= program->getNumViews();
++    }
++    const void *drawIndexPointer = nullptr;
++
++    ANGLE_TRY(setDrawElementsState(context, count, type, indices, adjustedInstanceCount,
++                                   &drawIndexPointer));
++    getFunctions()->drawElementsInstancedBaseVertex(
++        ToGLenum(mode), count, ToGLenum(type), drawIndexPointer, adjustedInstanceCount, baseVertex);
++    return angle::Result::Continue;
++}
++
+ angle::Result ContextGL::drawElementsInstancedBaseVertexBaseInstance(const gl::Context *context,
+                                                                      gl::PrimitiveMode mode,
+                                                                      GLsizei count,
+@@ -565,6 +619,35 @@ angle::Result ContextGL::drawRangeElements(const gl::Context *context,
+     return angle::Result::Continue;
+ }
+ 
++angle::Result ContextGL::drawRangeElementsBaseVertex(const gl::Context *context,
++                                                     gl::PrimitiveMode mode,
++                                                     GLuint start,
++                                                     GLuint end,
++                                                     GLsizei count,
++                                                     gl::DrawElementsType type,
++                                                     const void *indices,
++                                                     GLint baseVertex)
++{
++    const gl::Program *program   = context->getState().getProgram();
++    const bool usesMultiview     = program->usesMultiview();
++    const GLsizei instanceCount  = usesMultiview ? program->getNumViews() : 0;
++    const void *drawIndexPointer = nullptr;
++
++    ANGLE_TRY(
++        setDrawElementsState(context, count, type, indices, instanceCount, &drawIndexPointer));
++    if (!usesMultiview)
++    {
++        getFunctions()->drawRangeElementsBaseVertex(ToGLenum(mode), start, end, count,
++                                                    ToGLenum(type), drawIndexPointer, baseVertex);
++    }
++    else
++    {
++        getFunctions()->drawElementsInstancedBaseVertex(
++            ToGLenum(mode), count, ToGLenum(type), drawIndexPointer, instanceCount, baseVertex);
++    }
++    return angle::Result::Continue;
++}
++
+ angle::Result ContextGL::drawArraysIndirect(const gl::Context *context,
+                                             gl::PrimitiveMode mode,
+                                             const void *indirect)
+diff --git a/src/libANGLE/renderer/gl/ContextGL.h b/src/libANGLE/renderer/gl/ContextGL.h
+index 06b174fbc..977ea2ecb 100644
+--- a/src/libANGLE/renderer/gl/ContextGL.h
++++ b/src/libANGLE/renderer/gl/ContextGL.h
+@@ -114,12 +114,25 @@ class ContextGL : public ContextImpl
+                                GLsizei count,
+                                gl::DrawElementsType type,
+                                const void *indices) override;
++    angle::Result drawElementsBaseVertex(const gl::Context *context,
++                                         gl::PrimitiveMode mode,
++                                         GLsizei count,
++                                         gl::DrawElementsType type,
++                                         const void *indices,
++                                         GLint baseVertex) override;
+     angle::Result drawElementsInstanced(const gl::Context *context,
+                                         gl::PrimitiveMode mode,
+                                         GLsizei count,
+                                         gl::DrawElementsType type,
+                                         const void *indices,
+                                         GLsizei instances) override;
++    angle::Result drawElementsInstancedBaseVertex(const gl::Context *context,
++                                                  gl::PrimitiveMode mode,
++                                                  GLsizei count,
++                                                  gl::DrawElementsType type,
++                                                  const void *indices,
++                                                  GLsizei instanceCount,
++                                                  GLint baseVertex) override;
+     angle::Result drawElementsInstancedBaseVertexBaseInstance(const gl::Context *context,
+                                                               gl::PrimitiveMode mode,
+                                                               GLsizei count,
+@@ -135,6 +148,14 @@ class ContextGL : public ContextImpl
+                                     GLsizei count,
+                                     gl::DrawElementsType type,
+                                     const void *indices) override;
++    angle::Result drawRangeElementsBaseVertex(const gl::Context *context,
++                                              gl::PrimitiveMode mode,
++                                              GLuint start,
++                                              GLuint end,
++                                              GLsizei count,
++                                              gl::DrawElementsType type,
++                                              const void *indices,
++                                              GLint baseVertex) override;
+     angle::Result drawArraysIndirect(const gl::Context *context,
+                                      gl::PrimitiveMode mode,
+                                      const void *indirect) override;
+diff --git a/src/libANGLE/renderer/metal/ContextMtl.h b/src/libANGLE/renderer/metal/ContextMtl.h
+index ebfa537ab..55c3576a1 100644
+--- a/src/libANGLE/renderer/metal/ContextMtl.h
++++ b/src/libANGLE/renderer/metal/ContextMtl.h
+@@ -64,12 +64,25 @@ class ContextMtl : public ContextImpl, public mtl::Context
+                                GLsizei count,
+                                gl::DrawElementsType type,
+                                const void *indices) override;
++    angle::Result drawElementsBaseVertex(const gl::Context *context,
++                                         gl::PrimitiveMode mode,
++                                         GLsizei count,
++                                         gl::DrawElementsType type,
++                                         const void *indices,
++                                         GLint baseVertex) override;
+     angle::Result drawElementsInstanced(const gl::Context *context,
+                                         gl::PrimitiveMode mode,
+                                         GLsizei count,
+                                         gl::DrawElementsType type,
+                                         const void *indices,
+                                         GLsizei instanceCount) override;
++    angle::Result drawElementsInstancedBaseVertex(const gl::Context *context,
++                                                  gl::PrimitiveMode mode,
++                                                  GLsizei count,
++                                                  gl::DrawElementsType type,
++                                                  const void *indices,
++                                                  GLsizei instanceCount,
++                                                  GLint baseVertex) override;
+     angle::Result drawElementsInstancedBaseVertexBaseInstance(const gl::Context *context,
+                                                               gl::PrimitiveMode mode,
+                                                               GLsizei count,
+@@ -85,6 +98,14 @@ class ContextMtl : public ContextImpl, public mtl::Context
+                                     GLsizei count,
+                                     gl::DrawElementsType type,
+                                     const void *indices) override;
++    angle::Result drawRangeElementsBaseVertex(const gl::Context *context,
++                                              gl::PrimitiveMode mode,
++                                              GLuint start,
++                                              GLuint end,
++                                              GLsizei count,
++                                              gl::DrawElementsType type,
++                                              const void *indices,
++                                              GLint baseVertex) override;
+     angle::Result drawArraysIndirect(const gl::Context *context,
+                                      gl::PrimitiveMode mode,
+                                      const void *indirect) override;
+diff --git a/src/libANGLE/renderer/metal/ContextMtl.mm b/src/libANGLE/renderer/metal/ContextMtl.mm
+index b9407e263..aadf3e708 100644
+--- a/src/libANGLE/renderer/metal/ContextMtl.mm
++++ b/src/libANGLE/renderer/metal/ContextMtl.mm
+@@ -302,6 +302,17 @@ angle::Result ContextMtl::drawElements(const gl::Context *context,
+ 
+     return angle::Result::Continue;
+ }
++angle::Result ContextMtl::drawElementsBaseVertex(const gl::Context *context,
++                                                 gl::PrimitiveMode mode,
++                                                 GLsizei count,
++                                                 gl::DrawElementsType type,
++                                                 const void *indices,
++                                                 GLint baseVertex)
++{
++    // NOTE(hqle): ES 3.2
++    UNIMPLEMENTED();
++    return angle::Result::Stop;
++}
+ angle::Result ContextMtl::drawElementsInstanced(const gl::Context *context,
+                                                 gl::PrimitiveMode mode,
+                                                 GLsizei count,
+@@ -313,6 +324,18 @@ angle::Result ContextMtl::drawElementsInstanced(const gl::Context *context,
+     UNIMPLEMENTED();
+     return angle::Result::Stop;
+ }
++angle::Result ContextMtl::drawElementsInstancedBaseVertex(const gl::Context *context,
++                                                          gl::PrimitiveMode mode,
++                                                          GLsizei count,
++                                                          gl::DrawElementsType type,
++                                                          const void *indices,
++                                                          GLsizei instanceCount,
++                                                          GLint baseVertex)
++{
++    // NOTE(hqle): ES 3.2
++    UNIMPLEMENTED();
++    return angle::Result::Stop;
++}
+ angle::Result ContextMtl::drawElementsInstancedBaseVertexBaseInstance(const gl::Context *context,
+                                                                       gl::PrimitiveMode mode,
+                                                                       GLsizei count,
+@@ -337,6 +360,19 @@ angle::Result ContextMtl::drawRangeElements(const gl::Context *context,
+     UNIMPLEMENTED();
+     return angle::Result::Stop;
+ }
++angle::Result ContextMtl::drawRangeElementsBaseVertex(const gl::Context *context,
++                                                      gl::PrimitiveMode mode,
++                                                      GLuint start,
++                                                      GLuint end,
++                                                      GLsizei count,
++                                                      gl::DrawElementsType type,
++                                                      const void *indices,
++                                                      GLint baseVertex)
++{
++    // NOTE(hqle): ES 3.2
++    UNIMPLEMENTED();
++    return angle::Result::Stop;
++}
+ angle::Result ContextMtl::drawArraysIndirect(const gl::Context *context,
+                                              gl::PrimitiveMode mode,
+                                              const void *indirect)
+diff --git a/src/libANGLE/renderer/null/ContextNULL.cpp b/src/libANGLE/renderer/null/ContextNULL.cpp
+index 70669975a..c95bfed3d 100644
+--- a/src/libANGLE/renderer/null/ContextNULL.cpp
++++ b/src/libANGLE/renderer/null/ContextNULL.cpp
+@@ -159,6 +159,16 @@ angle::Result ContextNULL::drawElements(const gl::Context *context,
+     return angle::Result::Continue;
+ }
+ 
++angle::Result ContextNULL::drawElementsBaseVertex(const gl::Context *context,
++                                                  gl::PrimitiveMode mode,
++                                                  GLsizei count,
++                                                  gl::DrawElementsType type,
++                                                  const void *indices,
++                                                  GLint baseVertex)
++{
++    return angle::Result::Continue;
++}
++
+ angle::Result ContextNULL::drawElementsInstanced(const gl::Context *context,
+                                                  gl::PrimitiveMode mode,
+                                                  GLsizei count,
+@@ -169,6 +179,17 @@ angle::Result ContextNULL::drawElementsInstanced(const gl::Context *context,
+     return angle::Result::Continue;
+ }
+ 
++angle::Result ContextNULL::drawElementsInstancedBaseVertex(const gl::Context *context,
++                                                           gl::PrimitiveMode mode,
++                                                           GLsizei count,
++                                                           gl::DrawElementsType type,
++                                                           const void *indices,
++                                                           GLsizei instances,
++                                                           GLint baseVertex)
++{
++    return angle::Result::Continue;
++}
++
+ angle::Result ContextNULL::drawElementsInstancedBaseVertexBaseInstance(const gl::Context *context,
+                                                                        gl::PrimitiveMode mode,
+                                                                        GLsizei count,
+@@ -192,6 +213,17 @@ angle::Result ContextNULL::drawRangeElements(const gl::Context *context,
+     return angle::Result::Continue;
+ }
+ 
++angle::Result ContextNULL::drawRangeElementsBaseVertex(const gl::Context *context,
++                                                       gl::PrimitiveMode mode,
++                                                       GLuint start,
++                                                       GLuint end,
++                                                       GLsizei count,
++                                                       gl::DrawElementsType type,
++                                                       const void *indices)
++{
++    return angle::Result::Continue;
++}
++
+ angle::Result ContextNULL::drawArraysIndirect(const gl::Context *context,
+                                               gl::PrimitiveMode mode,
+                                               const void *indirect)
+diff --git a/src/libANGLE/renderer/null/ContextNULL.h b/src/libANGLE/renderer/null/ContextNULL.h
+index f929da801..57250bdcc 100644
+--- a/src/libANGLE/renderer/null/ContextNULL.h
++++ b/src/libANGLE/renderer/null/ContextNULL.h
+@@ -66,12 +66,25 @@ class ContextNULL : public ContextImpl
+                                GLsizei count,
+                                gl::DrawElementsType type,
+                                const void *indices) override;
++    angle::Result drawElementsBaseVertex(const gl::Context *context,
++                                         gl::PrimitiveMode mode,
++                                         GLsizei count,
++                                         gl::DrawElementsType type,
++                                         const void *indices,
++                                         GLint baseVertex) override;
+     angle::Result drawElementsInstanced(const gl::Context *context,
+                                         gl::PrimitiveMode mode,
+                                         GLsizei count,
+                                         gl::DrawElementsType type,
+                                         const void *indices,
+                                         GLsizei instances) override;
++    angle::Result drawElementsInstancedBaseVertex(const gl::Context *context,
++                                                  gl::PrimitiveMode mode,
++                                                  GLsizei count,
++                                                  gl::DrawElementsType type,
++                                                  const void *indices,
++                                                  GLsizei instances,
++                                                  GLint baseVertex) override;
+     angle::Result drawElementsInstancedBaseVertexBaseInstance(const gl::Context *context,
+                                                               gl::PrimitiveMode mode,
+                                                               GLsizei count,
+@@ -87,6 +100,14 @@ class ContextNULL : public ContextImpl
+                                     GLsizei count,
+                                     gl::DrawElementsType type,
+                                     const void *indices) override;
++    angle::Result drawRangeElementsBaseVertex(const gl::Context *context,
++                                              gl::PrimitiveMode mode,
++                                              GLuint start,
++                                              GLuint end,
++                                              GLsizei count,
++                                              gl::DrawElementsType type,
++                                              const void *indices,
++                                              GLint baseVertex) override;
+     angle::Result drawArraysIndirect(const gl::Context *context,
+                                      gl::PrimitiveMode mode,
+                                      const void *indirect) override;
+diff --git a/src/libANGLE/renderer/vulkan/ContextVk.cpp b/src/libANGLE/renderer/vulkan/ContextVk.cpp
+index 13cedfbd4..c3aada89f 100644
+--- a/src/libANGLE/renderer/vulkan/ContextVk.cpp
++++ b/src/libANGLE/renderer/vulkan/ContextVk.cpp
+@@ -1606,7 +1606,7 @@ angle::Result ContextVk::drawArrays(const gl::Context *context,
+         uint32_t numIndices;
+         ANGLE_TRY(setupLineLoopDraw(context, mode, first, count, gl::DrawElementsType::InvalidEnum,
+                                     nullptr, &commandBuffer, &numIndices));
+-        vk::LineLoopHelper::Draw(numIndices, commandBuffer);
++        vk::LineLoopHelper::Draw(numIndices, 0, commandBuffer);
+     }
+     else
+     {
+@@ -1683,7 +1683,7 @@ angle::Result ContextVk::drawElements(const gl::Context *context,
+         uint32_t indexCount;
+         ANGLE_TRY(
+             setupLineLoopDraw(context, mode, 0, count, type, indices, &commandBuffer, &indexCount));
+-        vk::LineLoopHelper::Draw(indexCount, commandBuffer);
++        vk::LineLoopHelper::Draw(indexCount, 0, commandBuffer);
+     }
+     else
+     {
+@@ -1694,6 +1694,30 @@ angle::Result ContextVk::drawElements(const gl::Context *context,
+     return angle::Result::Continue;
+ }
+ 
++angle::Result ContextVk::drawElementsBaseVertex(const gl::Context *context,
++                                                gl::PrimitiveMode mode,
++                                                GLsizei count,
++                                                gl::DrawElementsType type,
++                                                const void *indices,
++                                                GLint baseVertex)
++{
++    vk::CommandBuffer *commandBuffer = nullptr;
++    if (mode == gl::PrimitiveMode::LineLoop)
++    {
++        uint32_t indexCount;
++        ANGLE_TRY(
++            setupLineLoopDraw(context, mode, 0, count, type, indices, &commandBuffer, &indexCount));
++        vk::LineLoopHelper::Draw(indexCount, baseVertex, commandBuffer);
++    }
++    else
++    {
++        ANGLE_TRY(setupIndexedDraw(context, mode, count, 1, type, indices, &commandBuffer));
++        commandBuffer->drawIndexedBaseVertex(count, baseVertex);
++    }
++
++    return angle::Result::Continue;
++}
++
+ angle::Result ContextVk::drawElementsInstanced(const gl::Context *context,
+                                                gl::PrimitiveMode mode,
+                                                GLsizei count,
+@@ -1719,6 +1743,32 @@ angle::Result ContextVk::drawElementsInstanced(const gl::Context *context,
+     return angle::Result::Continue;
+ }
+ 
++angle::Result ContextVk::drawElementsInstancedBaseVertex(const gl::Context *context,
++                                                         gl::PrimitiveMode mode,
++                                                         GLsizei count,
++                                                         gl::DrawElementsType type,
++                                                         const void *indices,
++                                                         GLsizei instances,
++                                                         GLint baseVertex)
++{
++    vk::CommandBuffer *commandBuffer = nullptr;
++
++    if (mode == gl::PrimitiveMode::LineLoop)
++    {
++        uint32_t indexCount;
++        ANGLE_TRY(
++            setupLineLoopDraw(context, mode, 0, count, type, indices, &commandBuffer, &indexCount));
++        count = indexCount;
++    }
++    else
++    {
++        ANGLE_TRY(setupIndexedDraw(context, mode, count, instances, type, indices, &commandBuffer));
++    }
++
++    commandBuffer->drawIndexedInstancedBaseVertex(count, instances, baseVertex);
++    return angle::Result::Continue;
++}
++
+ angle::Result ContextVk::drawElementsInstancedBaseVertexBaseInstance(const gl::Context *context,
+                                                                      gl::PrimitiveMode mode,
+                                                                      GLsizei count,
+@@ -1757,6 +1807,17 @@ angle::Result ContextVk::drawRangeElements(const gl::Context *context,
+     return drawElements(context, mode, count, type, indices);
+ }
+ 
++angle::Result ContextVk::drawRangeElementsBaseVertex(const gl::Context *context,
++                                                     gl::PrimitiveMode mode,
++                                                     GLuint start,
++                                                     GLuint end,
++                                                     GLsizei count,
++                                                     gl::DrawElementsType type,
++                                                     const void *indices)
++{
++    return drawElementsBaseVertex(context, mode, count, type, indices, baseVertex);
++}
++
+ VkDevice ContextVk::getDevice() const
+ {
+     return mRenderer->getDevice();
+diff --git a/src/libANGLE/renderer/vulkan/ContextVk.h b/src/libANGLE/renderer/vulkan/ContextVk.h
+index c6fb7c249..83f6039e7 100644
+--- a/src/libANGLE/renderer/vulkan/ContextVk.h
++++ b/src/libANGLE/renderer/vulkan/ContextVk.h
+@@ -130,12 +130,25 @@ class ContextVk : public ContextImpl, public vk::Context, public vk::RenderPassO
+                                GLsizei count,
+                                gl::DrawElementsType type,
+                                const void *indices) override;
++    angle::Result drawElementsBaseVertex(const gl::Context *context,
++                                         gl::PrimitiveMode mode,
++                                         GLsizei count,
++                                         gl::DrawElementsType type,
++                                         const void *indices,
++                                         GLint baseVertex) override;
+     angle::Result drawElementsInstanced(const gl::Context *context,
+                                         gl::PrimitiveMode mode,
+                                         GLsizei count,
+                                         gl::DrawElementsType type,
+                                         const void *indices,
+                                         GLsizei instanceCount) override;
++    angle::Result drawElementsInstancedBaseVertex(const gl::Context *context,
++                                                  gl::PrimitiveMode mode,
++                                                  GLsizei count,
++                                                  gl::DrawElementsType type,
++                                                  const void *indices,
++                                                  GLsizei instanceCount,
++                                                  GLint baseVertex) override;
+     angle::Result drawElementsInstancedBaseVertexBaseInstance(const gl::Context *context,
+                                                               gl::PrimitiveMode mode,
+                                                               GLsizei count,
+@@ -151,6 +164,14 @@ class ContextVk : public ContextImpl, public vk::Context, public vk::RenderPassO
+                                     GLsizei count,
+                                     gl::DrawElementsType type,
+                                     const void *indices) override;
++    angle::Result drawRangeElementsBaseVertex(const gl::Context *context,
++                                              gl::PrimitiveMode mode,
++                                              GLuint start,
++                                              GLuint end,
++                                              GLsizei count,
++                                              gl::DrawElementsType type,
++                                              const void *indices,
++                                              GLint baseVertex) override;
+     angle::Result drawArraysIndirect(const gl::Context *context,
+                                      gl::PrimitiveMode mode,
+                                      const void *indirect) override;
+diff --git a/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.cpp b/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.cpp
+index 0ec910ed1..ae4337f9e 100644
+--- a/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.cpp
++++ b/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.cpp
+@@ -180,6 +180,13 @@ void SecondaryCommandBuffer::executeCommands(VkCommandBuffer cmdBuffer)
+                     vkCmdDrawIndexed(cmdBuffer, params->indexCount, 1, 0, 0, 0);
+                     break;
+                 }
++                case CommandID::DrawIndexedBaseVertex:
++                {
++                    const DrawIndexedBaseVertexParams *params =
++                        getParamPtr<DrawIndexedBaseVertexParams>(currentCommand);
++                    vkCmdDrawIndexed(cmdBuffer, params->indexCount, 1, 0, params->vertexOffset, 0);
++                    break;
++                }
+                 case CommandID::DrawIndexedInstanced:
+                 {
+                     const DrawIndexedInstancedParams *params =
+@@ -187,6 +194,14 @@ void SecondaryCommandBuffer::executeCommands(VkCommandBuffer cmdBuffer)
+                     vkCmdDrawIndexed(cmdBuffer, params->indexCount, params->instanceCount, 0, 0, 0);
+                     break;
+                 }
++                case CommandID::DrawIndexedInstancedBaseVertex:
++                {
++                    const DrawIndexedInstancedBaseVertexParams *params =
++                        getParamPtr<DrawIndexedInstancedBaseVertexParams>(currentCommand);
++                    vkCmdDrawIndexed(cmdBuffer, params->indexCount, params->instanceCount, 0,
++                                     params->vertexOffset, 0);
++                    break;
++                }
+                 case CommandID::DrawIndexedInstancedBaseVertexBaseInstance:
+                 {
+                     const DrawIndexedInstancedBaseVertexBaseInstanceParams *params =
+diff --git a/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.h b/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.h
+index cc3704668..9e6b25096 100644
+--- a/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.h
++++ b/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.h
+@@ -47,7 +47,9 @@ enum class CommandID : uint16_t
+     DispatchIndirect,
+     Draw,
+     DrawIndexed,
++    DrawIndexedBaseVertex,
+     DrawIndexedInstanced,
++    DrawIndexedInstancedBaseVertex,
+     DrawIndexedInstancedBaseVertexBaseInstance,
+     DrawInstanced,
+     DrawInstancedBaseInstance,
+@@ -215,6 +217,13 @@ struct DrawIndexedParams
+ };
+ VERIFY_4_BYTE_ALIGNMENT(DrawIndexedParams)
+ 
++struct DrawIndexedBaseVertexParams
++{
++    uint32_t indexCount;
++    uint32_t vertexOffset;
++};
++VERIFY_4_BYTE_ALIGNMENT(DrawIndexedBaseVertexParams)
++
+ struct DrawIndexedInstancedParams
+ {
+     uint32_t indexCount;
+@@ -222,6 +231,14 @@ struct DrawIndexedInstancedParams
+ };
+ VERIFY_4_BYTE_ALIGNMENT(DrawIndexedInstancedParams)
+ 
++struct DrawIndexedInstancedBaseVertexParams
++{
++    uint32_t indexCount;
++    uint32_t instanceCount;
++    uint32_t vertexOffset;
++};
++VERIFY_4_BYTE_ALIGNMENT(DrawIndexedInstancedBaseVertexParams)
++
+ struct DrawIndexedInstancedBaseVertexBaseInstanceParams
+ {
+     uint32_t indexCount;
+@@ -478,8 +495,12 @@ class SecondaryCommandBuffer final : angle::NonCopyable
+     void draw(uint32_t vertexCount, uint32_t firstVertex);
+ 
+     void drawIndexed(uint32_t indexCount);
++    void drawIndexedBaseVertex(uint32_t indexCount, uint32_t vertexOffset);
+ 
+     void drawIndexedInstanced(uint32_t indexCount, uint32_t instanceCount);
++    void drawIndexedInstancedBaseVertex(uint32_t indexCount,
++                                        uint32_t instanceCount,
++                                        uint32_t vertexOffset);
+     void drawIndexedInstancedBaseVertexBaseInstance(uint32_t indexCount,
+                                                     uint32_t instanceCount,
+                                                     uint32_t firstIndex,
+@@ -920,6 +941,15 @@ ANGLE_INLINE void SecondaryCommandBuffer::drawIndexed(uint32_t indexCount)
+     paramStruct->indexCount        = indexCount;
+ }
+ 
++ANGLE_INLINE void SecondaryCommandBuffer::drawIndexedBaseVertex(uint32_t indexCount,
++                                                                uint32_t vertexOffset)
++{
++    DrawIndexedParamsBaseVertex *paramStruct =
++        initCommand<DrawIndexedParamsBaseVertex>(CommandID::DrawIndexedBaseVertex);
++    paramStruct->indexCount   = indexCount;
++    paramStruct->vertexOffset = vertexOffset;
++}
++
+ ANGLE_INLINE void SecondaryCommandBuffer::drawIndexedInstanced(uint32_t indexCount,
+                                                                uint32_t instanceCount)
+ {
+@@ -928,6 +958,19 @@ ANGLE_INLINE void SecondaryCommandBuffer::drawIndexedInstanced(uint32_t indexCou
+     paramStruct->indexCount    = indexCount;
+     paramStruct->instanceCount = instanceCount;
+ }
++
++ANGLE_INLINE void SecondaryCommandBuffer::drawIndexedInstancedBaseVertex(uint32_t indexCount,
++                                                                         uint32_t instanceCount,
++                                                                         uint32_t vertexOffset)
++{
++    DrawIndexedInstancedBaseVertexParams *paramStruct =
++        initCommand<DrawIndexedInstancedBaseVertexParams>(
++            CommandID::DrawIndexedInstancedBaseVertex);
++    paramStruct->indexCount    = indexCount;
++    paramStruct->instanceCount = instanceCount;
++    paramStruct->vertexOffset  = vertexOffset;
++}
++
+ ANGLE_INLINE void SecondaryCommandBuffer::drawIndexedInstancedBaseVertexBaseInstance(
+     uint32_t indexCount,
+     uint32_t instanceCount,
+diff --git a/src/libANGLE/renderer/vulkan/vk_helpers.cpp b/src/libANGLE/renderer/vulkan/vk_helpers.cpp
+index c36357e92..f161ea4ca 100644
+--- a/src/libANGLE/renderer/vulkan/vk_helpers.cpp
++++ b/src/libANGLE/renderer/vulkan/vk_helpers.cpp
+@@ -1388,10 +1388,10 @@ void LineLoopHelper::destroy(VkDevice device)
+ }
+ 
+ // static
+-void LineLoopHelper::Draw(uint32_t count, CommandBuffer *commandBuffer)
++void LineLoopHelper::Draw(uint32_t count, uint32_t baseVertex, CommandBuffer *commandBuffer)
+ {
+     // Our first index is always 0 because that's how we set it up in createIndexBuffer*.
+-    commandBuffer->drawIndexed(count);
++    commandBuffer->drawIndexedBaseVertex(count, baseVertex);
+ }
+ 
+ // BufferHelper implementation.
+diff --git a/src/libANGLE/renderer/vulkan/vk_helpers.h b/src/libANGLE/renderer/vulkan/vk_helpers.h
+index fe3d0e9a7..ee153ac5f 100644
+--- a/src/libANGLE/renderer/vulkan/vk_helpers.h
++++ b/src/libANGLE/renderer/vulkan/vk_helpers.h
+@@ -449,7 +449,7 @@ class LineLoopHelper final : angle::NonCopyable
+     void release(ContextVk *contextVk);
+     void destroy(VkDevice device);
+ 
+-    static void Draw(uint32_t count, CommandBuffer *commandBuffer);
++    static void Draw(uint32_t count, uint32_t baseVertex, CommandBuffer *commandBuffer);
+ 
+   private:
+     DynamicBuffer mDynamicIndexBuffer;
+diff --git a/src/libANGLE/renderer/vulkan/vk_wrapper.h b/src/libANGLE/renderer/vulkan/vk_wrapper.h
+index c9fe77bd4..5cfc8f9c6 100644
+--- a/src/libANGLE/renderer/vulkan/vk_wrapper.h
++++ b/src/libANGLE/renderer/vulkan/vk_wrapper.h
+@@ -271,7 +271,11 @@ class CommandBuffer : public WrappedObject<CommandBuffer, VkCommandBuffer>
+                      int32_t vertexOffset,
+                      uint32_t firstInstance);
+     void drawIndexed(uint32_t indexCount);
++    void drawIndexedBaseVertex(uint32_t indexCount, uint32_t vertexOffset);
+     void drawIndexedInstanced(uint32_t indexCount, uint32_t instanceCount);
++    void drawIndexedInstancedBaseVertex(uint32_t indexCount,
++                                        uint32_t instanceCount,
++                                        uint32_t vertexOffset);
+     void drawIndexedInstancedBaseVertexBaseInstance(uint32_t indexCount,
+                                                     uint32_t instanceCount,
+                                                     uint32_t firstIndex,
+@@ -958,12 +962,26 @@ ANGLE_INLINE void CommandBuffer::drawIndexed(uint32_t indexCount)
+     vkCmdDrawIndexed(mHandle, indexCount, 1, 0, 0, 0);
+ }
+ 
++ANGLE_INLINE void CommandBuffer::drawIndexedBaseVertex(uint32_t indexCount, uint32_t vertexOffset)
++{
++    ASSERT(valid());
++    vkCmdDrawIndexed(mHandle, indexCount, 1, 0, vertexOffset, 0);
++}
++
+ ANGLE_INLINE void CommandBuffer::drawIndexedInstanced(uint32_t indexCount, uint32_t instanceCount)
+ {
+     ASSERT(valid());
+     vkCmdDrawIndexed(mHandle, indexCount, instanceCount, 0, 0, 0);
+ }
+ 
++ANGLE_INLINE void CommandBuffer::drawIndexedInstancedBaseVertex(uint32_t indexCount,
++                                                                uint32_t instanceCount,
++                                                                uint32_t vertexOffset)
++{
++    ASSERT(valid());
++    vkCmdDrawIndexed(mHandle, indexCount, instanceCount, 0, vertexOffset, 0);
++}
++
+ ANGLE_INLINE void CommandBuffer::drawIndexedInstancedBaseVertexBaseInstance(uint32_t indexCount,
+                                                                             uint32_t instanceCount,
+                                                                             uint32_t firstIndex,
+-- 
+2.21.0
+
