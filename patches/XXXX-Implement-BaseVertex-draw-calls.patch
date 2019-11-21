@@ -1,4 +1,4 @@
-From 566cd67703322e546fb2aa72d96b07f358726c78 Mon Sep 17 00:00:00 2001
+From ebdfacfcbfda9385ea712468ba27647281f300d1 Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls
@@ -30,11 +30,12 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libANGLE/renderer/vulkan/vk_helpers.cpp   |  4 +-
  src/libANGLE/renderer/vulkan/vk_helpers.h     |  2 +-
  src/libANGLE/renderer/vulkan/vk_wrapper.h     | 18 ++++
+ src/libANGLE/validationES32.cpp               | 62 ++++++++++++--
  src/libANGLE/validationES32_autogen.h         | 12 +--
  src/libGL/entry_points_gl_3_2_autogen.cpp     | 44 +++++-----
  .../entry_points_gles_3_2_autogen.cpp         | 44 +++++-----
  .../entry_points_gles_ext_autogen.cpp         | 44 +++++-----
- 28 files changed, 688 insertions(+), 119 deletions(-)
+ 29 files changed, 742 insertions(+), 127 deletions(-)
 
 diff --git a/scripts/entry_point_packed_gl_enums.json b/scripts/entry_point_packed_gl_enums.json
 index 1761267ab..19f16e85e 100644
@@ -1357,6 +1358,100 @@ index c9fe77bd4..5cfc8f9c6 100644
  ANGLE_INLINE void CommandBuffer::drawIndexedInstancedBaseVertexBaseInstance(uint32_t indexCount,
                                                                              uint32_t instanceCount,
                                                                              uint32_t firstIndex,
+diff --git a/src/libANGLE/validationES32.cpp b/src/libANGLE/validationES32.cpp
+index 8a65450bd..3f8adae75 100644
+--- a/src/libANGLE/validationES32.cpp
++++ b/src/libANGLE/validationES32.cpp
+@@ -118,35 +118,81 @@ bool ValidateDisablei(Context *context, GLenum target, GLuint index)
+ }
+ 
+ bool ValidateDrawElementsBaseVertex(Context *context,
+-                                    GLenum mode,
++                                    PrimitiveMode mode,
+                                     GLsizei count,
+-                                    GLenum type,
++                                    DrawElementsType type,
+                                     const void *indices,
+                                     GLint basevertex)
+ {
+-    return true;
++    if (context->getClientMajorVersion() < 3)
++    {
++        context->validationError(GL_INVALID_OPERATION, kES3Required);
++        return false;
++    }
++
++    return ValidateDrawElementsCommon(context, mode, count, type, indices, 1);
+ }
+ 
+ bool ValidateDrawElementsInstancedBaseVertex(Context *context,
+-                                             GLenum mode,
++                                             PrimitiveMode mode,
+                                              GLsizei count,
+-                                             GLenum type,
++                                             DrawElementsType type,
+                                              const void *indices,
+                                              GLsizei instancecount,
+                                              GLint basevertex)
+ {
+-    return true;
++    if (context->getClientMajorVersion() < 3)
++    {
++        context->validationError(GL_INVALID_OPERATION, kES3Required);
++        return false;
++    }
++
++    return ValidateDrawElementsInstancedBase(context, mode, count, type, indices, instanceCount);
+ }
+ 
+ bool ValidateDrawRangeElementsBaseVertex(Context *context,
+-                                         GLenum mode,
++                                         PrimitiveMode mode,
+                                          GLuint start,
+                                          GLuint end,
+                                          GLsizei count,
+-                                         GLenum type,
++                                         DrawElementsType type,
+                                          const void *indices,
+                                          GLint basevertex)
+ {
++    if (context->getClientMajorVersion() < 3)
++    {
++        context->validationError(GL_INVALID_OPERATION, kES3Required);
++        return false;
++    }
++
++    if (end < start)
++    {
++        context->validationError(GL_INVALID_VALUE, kInvalidElementRange);
++        return false;
++    }
++
++    if (!ValidateDrawElementsCommon(context, mode, count, type, indices, 0))
++    {
++        return false;
++    }
++
++    // Skip range checks for no-op calls.
++    if (count <= 0)
++    {
++        return true;
++    }
++
++    // Note that resolving the index range is a bit slow. We should probably optimize this.
++    IndexRange indexRange;
++    ANGLE_VALIDATION_TRY(context->getState().getVertexArray()->getIndexRange(context, type, count,
++                                                                             indices, &indexRange));
++
++    if (indexRange.end > end || indexRange.start < start)
++    {
++        // GL spec says that behavior in this case is undefined - generating an error is fine.
++        context->validationError(GL_INVALID_OPERATION, kExceedsElementRange);
++        return false;
++    }
+     return true;
+ }
+ 
 diff --git a/src/libANGLE/validationES32_autogen.h b/src/libANGLE/validationES32_autogen.h
 index 86cdbfebd..07acd31ed 100644
 --- a/src/libANGLE/validationES32_autogen.h
