@@ -1,4 +1,4 @@
-From 30dc9aa71018fead3a2966d8f62ea4a6096510c6 Mon Sep 17 00:00:00 2001
+From 39fd6162bc888d8765b6d7eaad39378cd4d23ecf Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls
@@ -16,16 +16,16 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libANGLE/renderer/gl/ContextGL.h          | 21 +++++
  src/libANGLE/renderer/metal/ContextMtl.h      | 21 +++++
  src/libANGLE/renderer/metal/ContextMtl.mm     | 36 ++++++++
- src/libANGLE/renderer/null/ContextNULL.cpp    | 32 +++++++
+ src/libANGLE/renderer/null/ContextNULL.cpp    | 33 ++++++++
  src/libANGLE/renderer/null/ContextNULL.h      | 21 +++++
- src/libANGLE/renderer/vulkan/ContextVk.cpp    | 65 ++++++++++++++-
+ src/libANGLE/renderer/vulkan/ContextVk.cpp    | 66 ++++++++++++++-
  src/libANGLE/renderer/vulkan/ContextVk.h      | 21 +++++
  .../vulkan/SecondaryCommandBuffer.cpp         | 15 ++++
  .../renderer/vulkan/SecondaryCommandBuffer.h  | 43 ++++++++++
  src/libANGLE/renderer/vulkan/vk_helpers.cpp   |  4 +-
  src/libANGLE/renderer/vulkan/vk_helpers.h     |  2 +-
  src/libANGLE/renderer/vulkan/vk_wrapper.h     | 18 ++++
- 19 files changed, 539 insertions(+), 8 deletions(-)
+ 19 files changed, 541 insertions(+), 8 deletions(-)
 
 diff --git a/src/libANGLE/Context.cpp b/src/libANGLE/Context.cpp
 index 8750e695a..bb9fe052e 100644
@@ -599,7 +599,7 @@ index b9407e263..aadf3e708 100644
                                               gl::PrimitiveMode mode,
                                               const void *indirect)
 diff --git a/src/libANGLE/renderer/null/ContextNULL.cpp b/src/libANGLE/renderer/null/ContextNULL.cpp
-index 70669975a..c95bfed3d 100644
+index 70669975a..655898406 100644
 --- a/src/libANGLE/renderer/null/ContextNULL.cpp
 +++ b/src/libANGLE/renderer/null/ContextNULL.cpp
 @@ -159,6 +159,16 @@ angle::Result ContextNULL::drawElements(const gl::Context *context,
@@ -637,7 +637,7 @@ index 70669975a..c95bfed3d 100644
  angle::Result ContextNULL::drawElementsInstancedBaseVertexBaseInstance(const gl::Context *context,
                                                                         gl::PrimitiveMode mode,
                                                                         GLsizei count,
-@@ -192,6 +213,17 @@ angle::Result ContextNULL::drawRangeElements(const gl::Context *context,
+@@ -192,6 +213,18 @@ angle::Result ContextNULL::drawRangeElements(const gl::Context *context,
      return angle::Result::Continue;
  }
  
@@ -647,7 +647,8 @@ index 70669975a..c95bfed3d 100644
 +                                                       GLuint end,
 +                                                       GLsizei count,
 +                                                       gl::DrawElementsType type,
-+                                                       const void *indices)
++                                                       const void *indices,
++                                                       GLint baseVertex)
 +{
 +    return angle::Result::Continue;
 +}
@@ -701,7 +702,7 @@ index f929da801..57250bdcc 100644
                                       gl::PrimitiveMode mode,
                                       const void *indirect) override;
 diff --git a/src/libANGLE/renderer/vulkan/ContextVk.cpp b/src/libANGLE/renderer/vulkan/ContextVk.cpp
-index 13cedfbd4..c3aada89f 100644
+index 13cedfbd4..e23a9482b 100644
 --- a/src/libANGLE/renderer/vulkan/ContextVk.cpp
 +++ b/src/libANGLE/renderer/vulkan/ContextVk.cpp
 @@ -1606,7 +1606,7 @@ angle::Result ContextVk::drawArrays(const gl::Context *context,
@@ -786,7 +787,7 @@ index 13cedfbd4..c3aada89f 100644
  angle::Result ContextVk::drawElementsInstancedBaseVertexBaseInstance(const gl::Context *context,
                                                                       gl::PrimitiveMode mode,
                                                                       GLsizei count,
-@@ -1757,6 +1807,17 @@ angle::Result ContextVk::drawRangeElements(const gl::Context *context,
+@@ -1757,6 +1807,18 @@ angle::Result ContextVk::drawRangeElements(const gl::Context *context,
      return drawElements(context, mode, count, type, indices);
  }
  
@@ -796,7 +797,8 @@ index 13cedfbd4..c3aada89f 100644
 +                                                     GLuint end,
 +                                                     GLsizei count,
 +                                                     gl::DrawElementsType type,
-+                                                     const void *indices)
++                                                     const void *indices,
++                                                     GLint baseVertex)
 +{
 +    return drawElementsBaseVertex(context, mode, count, type, indices, baseVertex);
 +}
