@@ -1,9 +1,17 @@
-From c5b5d9432759370624d863a48521f33572bfbc3b Mon Sep 17 00:00:00 2001
+From b0e89e36b3fe0fcc88c56f48897299444efb97a4 Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
-Subject: [PATCH] Implement BaseVertex draw calls
+Subject: [PATCH] Implement BaseVertex draw calls for Vulkan, OpenGL, NULL
+ contexts.
+
+This adds support for the following functions:
+
+- glDrawElementsBaseVertex
+- glDrawRangeElementsBaseVertex
+- glDrawElementsInstancedBaseVertex
 
 Bug: angleproject:3582
+Bug: angleproject:3402
 Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
 ---
  scripts/entry_point_packed_gl_enums.json      | 12 +++
@@ -13,7 +21,7 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libANGLE/capture_gles_3_2_autogen.h       | 24 +++---
  src/libANGLE/frame_capture_replay_autogen.cpp | 15 ++--
  src/libANGLE/renderer/ContextImpl.h           | 21 +++++
- src/libANGLE/renderer/d3d/d3d11/Context11.cpp | 33 ++++++++
+ src/libANGLE/renderer/d3d/d3d11/Context11.cpp | 39 +++++++++
  src/libANGLE/renderer/d3d/d3d11/Context11.h   | 21 +++++
  src/libANGLE/renderer/d3d/d3d9/Context9.cpp   | 36 ++++++++
  src/libANGLE/renderer/d3d/d3d9/Context9.h     | 21 +++++
@@ -35,7 +43,7 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libGL/entry_points_gl_3_2_autogen.cpp     | 44 +++++-----
  .../entry_points_gles_3_2_autogen.cpp         | 44 +++++-----
  .../entry_points_gles_ext_autogen.cpp         | 44 +++++-----
- 29 files changed, 742 insertions(+), 127 deletions(-)
+ 29 files changed, 748 insertions(+), 127 deletions(-)
 
 diff --git a/scripts/entry_point_packed_gl_enums.json b/scripts/entry_point_packed_gl_enums.json
 index 1761267ab..19f16e85e 100644
@@ -440,10 +448,10 @@ index bac2cf740..5f04ba1a5 100644
      virtual angle::Result drawArraysIndirect(const gl::Context *context,
                                               gl::PrimitiveMode mode,
 diff --git a/src/libANGLE/renderer/d3d/d3d11/Context11.cpp b/src/libANGLE/renderer/d3d/d3d11/Context11.cpp
-index 4cc0faa0e..a3eb29d6c 100644
+index 4cc0faa0e..9a12f1ff7 100644
 --- a/src/libANGLE/renderer/d3d/d3d11/Context11.cpp
 +++ b/src/libANGLE/renderer/d3d/d3d11/Context11.cpp
-@@ -337,6 +337,16 @@ angle::Result Context11::drawElements(const gl::Context *context,
+@@ -337,6 +337,18 @@ angle::Result Context11::drawElements(const gl::Context *context,
      return drawElementsImpl(context, mode, count, type, indices, 0, 0, 0);
  }
  
@@ -454,13 +462,15 @@ index 4cc0faa0e..a3eb29d6c 100644
 +                                                const void *indices,
 +                                                GLint baseVertex)
 +{
-+    return drawElementsImpl(context, mode, count, type, indices, 0, baseVertex, 0);
++    // TODO: angleproject:3402
++    UNIMPLEMENTED();
++    return angle::Result::Stop;
 +}
 +
  angle::Result Context11::drawElementsInstanced(const gl::Context *context,
                                                 gl::PrimitiveMode mode,
                                                 GLsizei count,
-@@ -347,6 +357,17 @@ angle::Result Context11::drawElementsInstanced(const gl::Context *context,
+@@ -347,6 +359,19 @@ angle::Result Context11::drawElementsInstanced(const gl::Context *context,
      return drawElementsImpl(context, mode, count, type, indices, instances, 0, 0);
  }
  
@@ -472,13 +482,15 @@ index 4cc0faa0e..a3eb29d6c 100644
 +                                                         GLsizei instances,
 +                                                         GLint baseVertex)
 +{
-+    return drawElementsImpl(context, mode, count, type, indices, instances, baseVertex, 0);
++    // TODO: angleproject:3402
++    UNIMPLEMENTED();
++    return angle::Result::Stop;
 +}
 +
  angle::Result Context11::drawElementsInstancedBaseVertexBaseInstance(const gl::Context *context,
                                                                       gl::PrimitiveMode mode,
                                                                       GLsizei count,
-@@ -371,6 +392,18 @@ angle::Result Context11::drawRangeElements(const gl::Context *context,
+@@ -371,6 +396,20 @@ angle::Result Context11::drawRangeElements(const gl::Context *context,
      return drawElementsImpl(context, mode, count, type, indices, 0, 0, 0);
  }
  
@@ -491,7 +503,9 @@ index 4cc0faa0e..a3eb29d6c 100644
 +                                                     const void *indices,
 +                                                     GLint baseVertex)
 +{
-+    return drawElementsImpl(context, mode, count, type, indices, 0, baseVertex, 0);
++    // TODO: angleproject:3402
++    UNIMPLEMENTED();
++    return angle::Result::Stop;
 +}
 +
  angle::Result Context11::drawArraysIndirect(const gl::Context *context,
