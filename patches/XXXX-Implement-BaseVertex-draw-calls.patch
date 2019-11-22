@@ -1,4 +1,4 @@
-From 860ee689603ef9749248cc09a1fec33a15ef70ad Mon Sep 17 00:00:00 2001
+From bcfaec5c7d3f2bd356c6b2d2d20c9aec452134ac Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls for Vulkan, OpenGL, NULL
@@ -40,7 +40,7 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libANGLE/renderer/vulkan/ContextVk.h      | 21 +++++
  .../vulkan/SecondaryCommandBuffer.cpp         | 21 +++++
  .../renderer/vulkan/SecondaryCommandBuffer.h  | 43 ++++++++++
- .../renderer/vulkan/vk_caps_utils.cpp         |  8 +-
+ .../renderer/vulkan/vk_caps_utils.cpp         |  4 +
  src/libANGLE/renderer/vulkan/vk_helpers.cpp   |  4 +-
  src/libANGLE/renderer/vulkan/vk_helpers.h     |  2 +-
  src/libANGLE/renderer/vulkan/vk_wrapper.h     | 18 ++++
@@ -49,7 +49,7 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libGL/entry_points_gl_3_2_autogen.cpp     | 44 +++++-----
  .../entry_points_gles_3_2_autogen.cpp         | 44 +++++-----
  .../entry_points_gles_ext_autogen.cpp         | 44 +++++-----
- 35 files changed, 797 insertions(+), 144 deletions(-)
+ 35 files changed, 795 insertions(+), 142 deletions(-)
 
 diff --git a/scripts/code_generation_hashes/GL_EGL_entry_points.json b/scripts/code_generation_hashes/GL_EGL_entry_points.json
 index 3927f7cda..f0e240475 100644
@@ -177,7 +177,7 @@ index d72a6f499..6dfda91a4 100644
          map["GL_OES_point_size_array"] = enableableExtension(&Extensions::pointSizeArray);
          map["GL_OES_texture_cube_map"] = enableableExtension(&Extensions::textureCubeMap);
 diff --git a/src/libANGLE/Caps.h b/src/libANGLE/Caps.h
-index a51fff297..d97dd0e5c 100644
+index f16a1f41a..d21d05262 100644
 --- a/src/libANGLE/Caps.h
 +++ b/src/libANGLE/Caps.h
 @@ -544,6 +544,16 @@ struct Extensions
@@ -198,7 +198,7 @@ index a51fff297..d97dd0e5c 100644
  
  // Pointer to a boolean memeber of the Extensions struct
 diff --git a/src/libANGLE/Context.cpp b/src/libANGLE/Context.cpp
-index 8750e695a..36b46401b 100644
+index e254a3789..90e80d92b 100644
 --- a/src/libANGLE/Context.cpp
 +++ b/src/libANGLE/Context.cpp
 @@ -2299,23 +2299,41 @@ void Context::drawElementsInstanced(PrimitiveMode mode,
@@ -973,7 +973,7 @@ index 06b174fbc..977ea2ecb 100644
                                       gl::PrimitiveMode mode,
                                       const void *indirect) override;
 diff --git a/src/libANGLE/renderer/gl/renderergl_utils.cpp b/src/libANGLE/renderer/gl/renderergl_utils.cpp
-index 35c5c14b5..175e3b6fa 100644
+index d9b635ef4..8b652fa9c 100644
 --- a/src/libANGLE/renderer/gl/renderergl_utils.cpp
 +++ b/src/libANGLE/renderer/gl/renderergl_utils.cpp
 @@ -1421,6 +1421,16 @@ void GenerateCaps(const FunctionsGL *functions,
@@ -1494,10 +1494,10 @@ index cc3704668..19c2c9a1c 100644
      uint32_t indexCount,
      uint32_t instanceCount,
 diff --git a/src/libANGLE/renderer/vulkan/vk_caps_utils.cpp b/src/libANGLE/renderer/vulkan/vk_caps_utils.cpp
-index 6d230649d..1848bcdae 100644
+index 8318bb299..7a93272f1 100644
 --- a/src/libANGLE/renderer/vulkan/vk_caps_utils.cpp
 +++ b/src/libANGLE/renderer/vulkan/vk_caps_utils.cpp
-@@ -66,6 +66,10 @@ void RendererVk::ensureCapsInitialized() const
+@@ -72,6 +72,10 @@ void RendererVk::ensureCapsInitialized() const
      // Enable ANGLE_base_vertex_base_instance
      mNativeExtensions.baseVertexBaseInstance = true;
  
@@ -1508,17 +1508,6 @@ index 6d230649d..1848bcdae 100644
      // Enable EXT_blend_minmax
      mNativeExtensions.blendMinMax = true;
  
-@@ -130,8 +134,8 @@ void RendererVk::ensureCapsInitialized() const
-     mNativeExtensions.getImageANGLE = true;
- 
-     // https://vulkan.lunarg.com/doc/view/1.0.30.0/linux/vkspec.chunked/ch31s02.html
--    mNativeCaps.maxElementIndex       = std::numeric_limits<GLuint>::max() - 1;
--    mNativeCaps.max3DTextureSize      = limitsVk.maxImageDimension3D;
-+    mNativeCaps.maxElementIndex  = std::numeric_limits<GLuint>::max() - 1;
-+    mNativeCaps.max3DTextureSize = limitsVk.maxImageDimension3D;
-     mNativeCaps.max2DTextureSize =
-         std::min(limitsVk.maxFramebufferWidth, limitsVk.maxImageDimension2D);
-     mNativeCaps.maxArrayTextureLayers = limitsVk.maxImageArrayLayers;
 diff --git a/src/libANGLE/renderer/vulkan/vk_helpers.cpp b/src/libANGLE/renderer/vulkan/vk_helpers.cpp
 index bcc37ffb6..038b4a11f 100644
 --- a/src/libANGLE/renderer/vulkan/vk_helpers.cpp
