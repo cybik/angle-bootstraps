@@ -1,4 +1,4 @@
-From da370168cf9a5b004be64da2066103b12e05c9b2 Mon Sep 17 00:00:00 2001
+From 133cae709adeac0138390da281e0806184957af6 Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls for Vulkan, OpenGL, NULL
@@ -2608,7 +2608,7 @@ index 86cdbfebd..07acd31ed 100644
                                           GLint basevertex);
  bool ValidateEnablei(Context *context, GLenum target, GLuint index);
 diff --git a/src/libANGLE/validationESEXT.cpp b/src/libANGLE/validationESEXT.cpp
-index 2aed04aef..1df2df7c0 100644
+index 2aed04aef..ea0d045da 100644
 --- a/src/libANGLE/validationESEXT.cpp
 +++ b/src/libANGLE/validationESEXT.cpp
 @@ -125,4 +125,173 @@ bool ValidateGetRenderbufferImageANGLE(Context *context,
@@ -2696,9 +2696,9 @@ index 2aed04aef..1df2df7c0 100644
 +}
 +
 +bool ValidateMultiDrawElementsBaseVertexEXT(Context *context,
-+                                            GLenum mode,
++                                            PrimitiveMode mode,
 +                                            const GLsizei *count,
-+                                            GLenum type,
++                                            DrawElementsType type,
 +                                            const void *const *indices,
 +                                            GLsizei drawcount,
 +                                            const GLint *basevertex)
