@@ -1,4 +1,4 @@
-From 1a5d746d571b6bff47ae5075ad0bcca6e8ee37e8 Mon Sep 17 00:00:00 2001
+From 499a11361a2f756500b3bc6fcb75238827fc19ac Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls for Vulkan, OpenGL, NULL
@@ -16,10 +16,10 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
 ---
  .../GLES2/gl2ext_explicit_context_autogen.inc |  14 +
  .../GL_EGL_WGL_loader.json                    |   6 +-
- .../GL_EGL_entry_points.json                  |  44 +-
+ .../GL_EGL_entry_points.json                  |  46 +-
  .../GLenum_value_to_string_map.json           |   2 +-
  .../code_generation_hashes/proc_table.json    |   4 +-
- scripts/entry_point_packed_gl_enums.json      |  12 +
+ scripts/entry_point_packed_gl_enums.json      |  16 +
  scripts/registry_xml.py                       |   2 +
  src/libANGLE/Caps.cpp                         |   2 +
  src/libANGLE/Caps.h                           |  10 +
@@ -30,12 +30,12 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libANGLE/capture_gles_3_2_autogen.cpp     |  37 +-
  src/libANGLE/capture_gles_3_2_autogen.h       |  24 +-
  src/libANGLE/capture_gles_3_2_params.cpp      |  12 +-
- src/libANGLE/capture_gles_ext_autogen.cpp     | 204 +++++++
+ src/libANGLE/capture_gles_ext_autogen.cpp     | 206 +++++++
  src/libANGLE/capture_gles_ext_autogen.h       | 141 +++++
  src/libANGLE/capture_gles_ext_params.cpp      | 117 ++++
  src/libANGLE/entry_points_enum_autogen.cpp    |  14 +
  src/libANGLE/entry_points_enum_autogen.h      |   7 +
- src/libANGLE/frame_capture_replay_autogen.cpp |  27 +-
+ src/libANGLE/frame_capture_replay_autogen.cpp |  28 +-
  src/libANGLE/renderer/ContextImpl.h           |  21 +
  src/libANGLE/renderer/d3d/d3d11/Context11.cpp |  39 ++
  src/libANGLE/renderer/d3d/d3d11/Context11.h   |  21 +
@@ -60,9 +60,10 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libANGLE/validationES32_autogen.h         |  12 +-
  src/libANGLE/validationESEXT.cpp              | 169 ++++++
  src/libANGLE/validationESEXT_autogen.h        |  53 ++
- src/libGL/entry_points_gl_3_2_autogen.cpp     |  44 +-
+ src/libANGLE/validationGL32_autogen.h         |   4 +-
+ src/libGL/entry_points_gl_3_2_autogen.cpp     |  59 +-
  .../entry_points_gles_3_2_autogen.cpp         |  44 +-
- .../entry_points_gles_ext_autogen.cpp         | 508 +++++++++++++++++-
+ .../entry_points_gles_ext_autogen.cpp         | 514 +++++++++++++++++-
  src/libGLESv2/entry_points_gles_ext_autogen.h |  95 ++++
  src/libGLESv2/libGLESv2_autogen.cpp           | 156 ++++++
  src/libGLESv2/libGLESv2_autogen.def           |  18 +
@@ -71,7 +72,7 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libGLESv2/proc_table_egl_autogen.cpp      |  21 +-
  util/gles_loader_autogen.cpp                  |  58 ++
  util/gles_loader_autogen.h                    |  23 +
- 57 files changed, 2422 insertions(+), 165 deletions(-)
+ 58 files changed, 2447 insertions(+), 174 deletions(-)
 
 diff --git a/include/GLES2/gl2ext_explicit_context_autogen.inc b/include/GLES2/gl2ext_explicit_context_autogen.inc
 index 75f663a00..1fe03d2f3 100644
@@ -149,7 +150,7 @@ index b810ea024..917d48df9 100644
      "12ffb44e5e743c826e4d84ac65cdba82",
    "util/windows/wgl_loader_autogen.h":
 diff --git a/scripts/code_generation_hashes/GL_EGL_entry_points.json b/scripts/code_generation_hashes/GL_EGL_entry_points.json
-index 3927f7cda..423498fa2 100644
+index 3927f7cda..dd0fc86ac 100644
 --- a/scripts/code_generation_hashes/GL_EGL_entry_points.json
 +++ b/scripts/code_generation_hashes/GL_EGL_entry_points.json
 @@ -4,7 +4,7 @@
@@ -157,7 +158,7 @@ index 3927f7cda..423498fa2 100644
      "24d4348e6c064b6837f46c955cc219a8",
    "scripts/entry_point_packed_gl_enums.json":
 -    "3b72a1d43df45cf53784b2a0002b93e5",
-+    "96c56ee7b7ce2f485e5822e6cf300888",
++    "bcf97f16fd4cd4d4e50d66622982e67e",
    "scripts/generate_entry_points.py":
      "36f89f5514fff27ecb4baeded89ae64d",
    "scripts/gl.xml":
@@ -187,7 +188,7 @@ index 3927f7cda..423498fa2 100644
 +    "022bf1da90cc56f2e52998b87d274e64",
    "src/libANGLE/Context_gles_ext_autogen.h":
 -    "4a24e91315986187921051585d04f66f",
-+    "d0d3146d3fc6334244416c0cd195de74",
++    "262f1af8a8cf25bb107afc80a664c69e",
    "src/libANGLE/capture_gles_1_0_autogen.cpp":
      "01eb0a76c176e5cdba3102cae58334af",
    "src/libANGLE/capture_gles_1_0_autogen.h":
@@ -202,10 +203,10 @@ index 3927f7cda..423498fa2 100644
 +    "fd5e95c49bb708635e5226f963a71eb5",
    "src/libANGLE/capture_gles_ext_autogen.cpp":
 -    "3bd6fcda980f381cbbad2956b896afd9",
-+    "fa8e244fd401d5cb84ede782848c765e",
++    "9ad4c94c48e1190ee7a7fe7360ef2f52",
    "src/libANGLE/capture_gles_ext_autogen.h":
 -    "2626f039751578bd51c1cbbc1e233f5d",
-+    "975d832dbc92401e2bf2d52b397c6884",
++    "10dc30fe9afca0b3454bb23bd716cd82",
    "src/libANGLE/entry_points_enum_autogen.cpp":
 -    "6f259507f339880bf81920738e82e688",
 +    "552afb6f0ec70ff4f848fec13d676531",
@@ -214,7 +215,7 @@ index 3927f7cda..423498fa2 100644
 +    "f8c1025b36be5451fb423ccec37e1c0f",
    "src/libANGLE/frame_capture_replay_autogen.cpp":
 -    "48b7051879562ab15c83e4de7af8c75d",
-+    "f9cd2ab7361870ec1889c61355f706fc",
++    "cb1c9b95ea7ba99b8dcaecbafa2c66ef",
    "src/libANGLE/frame_capture_utils_autogen.cpp":
      "f0a704d60de3f1f175a7799b49c45408",
    "src/libANGLE/frame_capture_utils_autogen.h":
@@ -228,16 +229,25 @@ index 3927f7cda..423498fa2 100644
      "1b470a8e190aa007f093f1f13f3b1a8c",
    "src/libANGLE/validationESEXT_autogen.h":
 -    "eeabee2f488207f70931f2e3a2ff9c55",
-+    "a2f1e484172c6ee44c965e71a597f847",
++    "5b65651171876c5f9fd9087e56cb82de",
    "src/libANGLE/validationGL11_autogen.h":
      "c5ac1ca523a39df2621d11e92c9c821a",
    "src/libANGLE/validationGL12_autogen.h":
+@@ -130,7 +130,7 @@
+   "src/libANGLE/validationGL31_autogen.h":
+     "05f50143f918acb954fd3a9888441ecd",
+   "src/libANGLE/validationGL32_autogen.h":
+-    "a74eaaea1b45684af766041b3e537a8c",
++    "0bcb618f8118715e7ac48989730fecb1",
+   "src/libANGLE/validationGL33_autogen.h":
+     "9a419eace66f443c5e28a52a3da758d9",
+   "src/libANGLE/validationGL3_autogen.h":
 @@ -190,7 +190,7 @@
    "src/libGL/entry_points_gl_3_1_autogen.h":
      "6ee6613c0206d99c6afdcd3faddb52a3",
    "src/libGL/entry_points_gl_3_2_autogen.cpp":
 -    "85c8dad28022855d4b08189abd0c45f9",
-+    "d36d26e96cc912c74b82bbcb3125c753",
++    "dbef4cb705baaf30df98e95ae138444f",
    "src/libGL/entry_points_gl_3_2_autogen.h":
      "347e40b5c9fd08a693bf4ffe713c61e6",
    "src/libGL/entry_points_gl_3_3_autogen.cpp":
@@ -251,7 +261,7 @@ index 3927f7cda..423498fa2 100644
      "e06eb4df7dc6fb29c5fd632a54b0b162",
    "src/libGLESv2/entry_points_gles_ext_autogen.cpp":
 -    "760cbaad5c626c1b27d579d6ca1b0049",
-+    "a584f13bc832a80b57b4ff685bbf58d3",
++    "58a0d9710588ca58b63f98c7fbb62bcf",
    "src/libGLESv2/entry_points_gles_ext_autogen.h":
 -    "a8dad3044b98f7988207a65987836143",
 +    "62b5f609fd34c47b0b1aa9e757b0f180",
@@ -302,7 +312,7 @@ index d3a453173..7c5c78b01 100644
  }
 \ No newline at end of file
 diff --git a/scripts/entry_point_packed_gl_enums.json b/scripts/entry_point_packed_gl_enums.json
-index 1761267ab..19f16e85e 100644
+index 1761267ab..27b671e61 100644
 --- a/scripts/entry_point_packed_gl_enums.json
 +++ b/scripts/entry_point_packed_gl_enums.json
 @@ -333,6 +333,10 @@
@@ -338,6 +348,17 @@ index 1761267ab..19f16e85e 100644
      "glDrawTransformFeedback": {
          "id": "TransformFeedbackID"
      },
+@@ -1011,6 +1023,10 @@
+         "mode": "PrimitiveMode",
+         "type": "DrawElementsType"
+     },
++    "glMultiDrawElementsBaseVertex": {
++        "mode": "PrimitiveMode",
++        "type": "DrawElementsType"
++    },
+     "glMultiDrawElementsInstanced": {
+         "mode": "PrimitiveMode",
+         "type": "DrawElementsType"
 diff --git a/scripts/registry_xml.py b/scripts/registry_xml.py
 index f093a692c..3b967e448 100644
 --- a/scripts/registry_xml.py
@@ -513,7 +534,7 @@ index 1ef85a632..2e31634ab 100644
      void framebufferTexture(GLenum target, GLenum attachment, TextureID texturePacked,             \
                              GLint level);                                                          \
 diff --git a/src/libANGLE/Context_gles_ext_autogen.h b/src/libANGLE/Context_gles_ext_autogen.h
-index c071f0c9b..0439ed8a4 100644
+index c071f0c9b..7596d0986 100644
 --- a/src/libANGLE/Context_gles_ext_autogen.h
 +++ b/src/libANGLE/Context_gles_ext_autogen.h
 @@ -329,6 +329,10 @@
@@ -521,9 +542,9 @@ index c071f0c9b..0439ed8a4 100644
      void queryCounter(QueryID idPacked, QueryType targetPacked);                                   \
      /* GL_EXT_draw_buffers */                                                                      \
 +    /* GL_EXT_draw_elements_base_vertex */                                                         \
-+    void multiDrawElementsBaseVertex(GLenum mode, const GLsizei *count, GLenum type,               \
-+                                     const void *const *indices, GLsizei primcount,                \
-+                                     const GLint *basevertex);                                     \
++    void multiDrawElementsBaseVertex(PrimitiveMode modePacked, const GLsizei *count,               \
++                                     DrawElementsType typePacked, const void *const *indices,      \
++                                     GLsizei primcount, const GLint *basevertex);                  \
      /* GL_EXT_geometry_shader */                                                                   \
      /* GL_EXT_instanced_arrays */                                                                  \
      /* GL_EXT_map_buffer_range */                                                                  \
@@ -747,10 +768,10 @@ index c3210c355..cbd887750 100644
                                                  GLint basevertex,
                                                  ParamCapture *indicesParam)
 diff --git a/src/libANGLE/capture_gles_ext_autogen.cpp b/src/libANGLE/capture_gles_ext_autogen.cpp
-index 9e91e9553..e46ab9bc0 100644
+index 9e91e9553..76e622015 100644
 --- a/src/libANGLE/capture_gles_ext_autogen.cpp
 +++ b/src/libANGLE/capture_gles_ext_autogen.cpp
-@@ -3700,6 +3700,127 @@ CallCapture CaptureDrawBuffersEXT(const State &glState,
+@@ -3700,6 +3700,129 @@ CallCapture CaptureDrawBuffersEXT(const State &glState,
      return CallCapture(gl::EntryPoint::DrawBuffersEXT, std::move(paramBuffer));
  }
  
@@ -839,37 +860,39 @@ index 9e91e9553..e46ab9bc0 100644
 +
 +CallCapture CaptureMultiDrawElementsBaseVertexEXT(const State &glState,
 +                                                  bool isCallValid,
-+                                                  GLenum mode,
++                                                  PrimitiveMode modePacked,
 +                                                  const GLsizei *count,
-+                                                  GLenum type,
++                                                  DrawElementsType typePacked,
 +                                                  const void *const *indices,
 +                                                  GLsizei primcount,
 +                                                  const GLint *basevertex)
 +{
 +    ParamBuffer paramBuffer;
 +
-+    paramBuffer.addEnumParam("mode", GLenumGroup::PrimitiveType, ParamType::TGLenum, mode);
++    paramBuffer.addValueParam("modePacked", ParamType::TPrimitiveMode, modePacked);
 +
 +    ParamCapture countParam("count", ParamType::TGLsizeiConstPointer);
 +    InitParamValue(ParamType::TGLsizeiConstPointer, count, &countParam.value);
-+    CaptureMultiDrawElementsBaseVertexEXT_count(glState, isCallValid, mode, count, type, indices,
-+                                                primcount, basevertex, &countParam);
++    CaptureMultiDrawElementsBaseVertexEXT_count(glState, isCallValid, modePacked, count, typePacked,
++                                                indices, primcount, basevertex, &countParam);
 +    paramBuffer.addParam(std::move(countParam));
 +
-+    paramBuffer.addEnumParam("type", GLenumGroup::DrawElementsType, ParamType::TGLenum, type);
++    paramBuffer.addValueParam("typePacked", ParamType::TDrawElementsType, typePacked);
 +
 +    ParamCapture indicesParam("indices", ParamType::TvoidConstPointerPointer);
 +    InitParamValue(ParamType::TvoidConstPointerPointer, indices, &indicesParam.value);
-+    CaptureMultiDrawElementsBaseVertexEXT_indices(glState, isCallValid, mode, count, type, indices,
-+                                                  primcount, basevertex, &indicesParam);
++    CaptureMultiDrawElementsBaseVertexEXT_indices(glState, isCallValid, modePacked, count,
++                                                  typePacked, indices, primcount, basevertex,
++                                                  &indicesParam);
 +    paramBuffer.addParam(std::move(indicesParam));
 +
 +    paramBuffer.addValueParam("primcount", ParamType::TGLsizei, primcount);
 +
 +    ParamCapture basevertexParam("basevertex", ParamType::TGLintConstPointer);
 +    InitParamValue(ParamType::TGLintConstPointer, basevertex, &basevertexParam.value);
-+    CaptureMultiDrawElementsBaseVertexEXT_basevertex(
-+        glState, isCallValid, mode, count, type, indices, primcount, basevertex, &basevertexParam);
++    CaptureMultiDrawElementsBaseVertexEXT_basevertex(glState, isCallValid, modePacked, count,
++                                                     typePacked, indices, primcount, basevertex,
++                                                     &basevertexParam);
 +    paramBuffer.addParam(std::move(basevertexParam));
 +
 +    return CallCapture(gl::EntryPoint::MultiDrawElementsBaseVertexEXT, std::move(paramBuffer));
@@ -878,7 +901,7 @@ index 9e91e9553..e46ab9bc0 100644
  CallCapture CaptureFramebufferTextureEXT(const State &glState,
                                           bool isCallValid,
                                           GLenum target,
-@@ -4888,6 +5009,89 @@ CallCapture CaptureEGLImageTargetTexture2DOES(const State &glState,
+@@ -4888,6 +5011,89 @@ CallCapture CaptureEGLImageTargetTexture2DOES(const State &glState,
      return CallCapture(gl::EntryPoint::EGLImageTargetTexture2DOES, std::move(paramBuffer));
  }
  
@@ -969,7 +992,7 @@ index 9e91e9553..e46ab9bc0 100644
                                 bool isCallValid,
                                 GLfloat x,
 diff --git a/src/libANGLE/capture_gles_ext_autogen.h b/src/libANGLE/capture_gles_ext_autogen.h
-index c3c7951c9..a8c2137cf 100644
+index c3c7951c9..2573337b1 100644
 --- a/src/libANGLE/capture_gles_ext_autogen.h
 +++ b/src/libANGLE/capture_gles_ext_autogen.h
 @@ -1054,6 +1054,40 @@ angle::CallCapture CaptureDrawBuffersEXT(const State &glState,
@@ -1003,9 +1026,9 @@ index c3c7951c9..a8c2137cf 100644
 +                                                         GLint basevertex);
 +angle::CallCapture CaptureMultiDrawElementsBaseVertexEXT(const State &glState,
 +                                                         bool isCallValid,
-+                                                         GLenum mode,
++                                                         PrimitiveMode modePacked,
 +                                                         const GLsizei *count,
-+                                                         GLenum type,
++                                                         DrawElementsType typePacked,
 +                                                         const void *const *indices,
 +                                                         GLsizei primcount,
 +                                                         const GLint *basevertex);
@@ -1079,27 +1102,27 @@ index c3c7951c9..a8c2137cf 100644
 +                                                   angle::ParamCapture *paramCapture);
 +void CaptureMultiDrawElementsBaseVertexEXT_count(const State &glState,
 +                                                 bool isCallValid,
-+                                                 GLenum mode,
++                                                 PrimitiveMode modePacked,
 +                                                 const GLsizei *count,
-+                                                 GLenum type,
++                                                 DrawElementsType typePacked,
 +                                                 const void *const *indices,
 +                                                 GLsizei primcount,
 +                                                 const GLint *basevertex,
 +                                                 angle::ParamCapture *paramCapture);
 +void CaptureMultiDrawElementsBaseVertexEXT_indices(const State &glState,
 +                                                   bool isCallValid,
-+                                                   GLenum mode,
++                                                   PrimitiveMode modePacked,
 +                                                   const GLsizei *count,
-+                                                   GLenum type,
++                                                   DrawElementsType typePacked,
 +                                                   const void *const *indices,
 +                                                   GLsizei primcount,
 +                                                   const GLint *basevertex,
 +                                                   angle::ParamCapture *paramCapture);
 +void CaptureMultiDrawElementsBaseVertexEXT_basevertex(const State &glState,
 +                                                      bool isCallValid,
-+                                                      GLenum mode,
++                                                      PrimitiveMode modePacked,
 +                                                      const GLsizei *count,
-+                                                      GLenum type,
++                                                      DrawElementsType typePacked,
 +                                                      const void *const *indices,
 +                                                      GLsizei primcount,
 +                                                      const GLint *basevertex,
@@ -1352,7 +1375,7 @@ index cfc5e721e..24b827a33 100644
      MultiDrawElementsIndirectCount,
      MultiDrawElementsInstancedANGLE,
 diff --git a/src/libANGLE/frame_capture_replay_autogen.cpp b/src/libANGLE/frame_capture_replay_autogen.cpp
-index 62687501c..1fe3e3f46 100644
+index 62687501c..e59b62a4b 100644
 --- a/src/libANGLE/frame_capture_replay_autogen.cpp
 +++ b/src/libANGLE/frame_capture_replay_autogen.cpp
 @@ -695,9 +695,10 @@ void FrameCapture::ReplayCall(gl::Context *context,
@@ -1396,16 +1419,17 @@ index 62687501c..1fe3e3f46 100644
                  replayContext->getAsConstPointer<const void *>(
                      params.getParam("indices", ParamType::TvoidConstPointer, 5)),
                  params.getParam("basevertex", ParamType::TGLint, 6).value.GLintVal);
-@@ -1921,6 +1924,18 @@ void FrameCapture::ReplayCall(gl::Context *context,
+@@ -1921,6 +1924,19 @@ void FrameCapture::ReplayCall(gl::Context *context,
                      params.getParam("indices", ParamType::TvoidConstPointerPointer, 3)),
                  params.getParam("drawcount", ParamType::TGLsizei, 4).value.GLsizeiVal);
              break;
 +        case gl::EntryPoint::MultiDrawElementsBaseVertex:
 +            context->multiDrawElementsBaseVertex(
-+                params.getParam("mode", ParamType::TGLenum, 0).value.GLenumVal,
++                params.getParam("modePacked", ParamType::TPrimitiveMode, 0).value.PrimitiveModeVal,
 +                replayContext->getAsConstPointer<const GLsizei *>(
 +                    params.getParam("count", ParamType::TGLsizeiConstPointer, 1)),
-+                params.getParam("type", ParamType::TGLenum, 2).value.GLenumVal,
++                params.getParam("typePacked", ParamType::TDrawElementsType, 2)
++                    .value.DrawElementsTypeVal,
 +                replayContext->getAsPointerConstPointer<const void *const *>(
 +                    params.getParam("indices", ParamType::TvoidConstPointerPointer, 3)),
 +                params.getParam("drawcount", ParamType::TGLsizei, 4).value.GLsizeiVal,
@@ -2745,7 +2769,7 @@ index 2aed04aef..1df2df7c0 100644
 +}
  }  // namespace gl
 diff --git a/src/libANGLE/validationESEXT_autogen.h b/src/libANGLE/validationESEXT_autogen.h
-index f20128123..87a9fba92 100644
+index f20128123..fdf614230 100644
 --- a/src/libANGLE/validationESEXT_autogen.h
 +++ b/src/libANGLE/validationESEXT_autogen.h
 @@ -848,6 +848,36 @@ bool ValidateQueryCounterEXT(Context *context, QueryID idPacked, QueryType targe
@@ -2775,9 +2799,9 @@ index f20128123..87a9fba92 100644
 +                                            const void *indices,
 +                                            GLint basevertex);
 +bool ValidateMultiDrawElementsBaseVertexEXT(Context *context,
-+                                            GLenum mode,
++                                            PrimitiveMode modePacked,
 +                                            const GLsizei *count,
-+                                            GLenum type,
++                                            DrawElementsType typePacked,
 +                                            const void *const *indices,
 +                                            GLsizei primcount,
 +                                            const GLint *basevertex);
@@ -2815,8 +2839,24 @@ index f20128123..87a9fba92 100644
  // GL_OES_draw_texture
  bool ValidateDrawTexfOES(Context *context,
                           GLfloat x,
+diff --git a/src/libANGLE/validationGL32_autogen.h b/src/libANGLE/validationGL32_autogen.h
+index faa62de27..76ac2088d 100644
+--- a/src/libANGLE/validationGL32_autogen.h
++++ b/src/libANGLE/validationGL32_autogen.h
+@@ -18,9 +18,9 @@ namespace gl
+ class Context;
+ 
+ bool ValidateMultiDrawElementsBaseVertex(Context *context,
+-                                         GLenum mode,
++                                         PrimitiveMode modePacked,
+                                          const GLsizei *count,
+-                                         GLenum type,
++                                         DrawElementsType typePacked,
+                                          const void *const *indices,
+                                          GLsizei drawcount,
+                                          const GLint *basevertex);
 diff --git a/src/libGL/entry_points_gl_3_2_autogen.cpp b/src/libGL/entry_points_gl_3_2_autogen.cpp
-index 55fd3c22a..8ec968dd5 100644
+index 55fd3c22a..fd17cc93a 100644
 --- a/src/libGL/entry_points_gl_3_2_autogen.cpp
 +++ b/src/libGL/entry_points_gl_3_2_autogen.cpp
 @@ -93,16 +93,18 @@ void GL_APIENTRY DrawElementsBaseVertex(GLenum mode,
@@ -2894,6 +2934,32 @@ index 55fd3c22a..8ec968dd5 100644
 -                      type, indices, basevertex);
 +        ANGLE_CAPTURE(DrawRangeElementsBaseVertex, isCallValid, context, modePacked, start, end,
 +                      count, typePacked, indices, basevertex);
+     }
+ }
+ 
+@@ -375,16 +381,19 @@ void GL_APIENTRY MultiDrawElementsBaseVertex(GLenum mode,
+ 
+     if (context)
+     {
++        PrimitiveMode modePacked                      = FromGL<PrimitiveMode>(mode);
++        DrawElementsType typePacked                   = FromGL<DrawElementsType>(type);
+         std::unique_lock<std::mutex> shareContextLock = GetShareGroupLock(context);
+-        bool isCallValid                              = (context->skipValidation() ||
+-                            ValidateMultiDrawElementsBaseVertex(context, mode, count, type, indices,
+-                                                                drawcount, basevertex));
++        bool isCallValid = (context->skipValidation() || ValidateMultiDrawElementsBaseVertex(
++                                                             context, modePacked, count, typePacked,
++                                                             indices, drawcount, basevertex));
+         if (isCallValid)
+         {
+-            context->multiDrawElementsBaseVertex(mode, count, type, indices, drawcount, basevertex);
++            context->multiDrawElementsBaseVertex(modePacked, count, typePacked, indices, drawcount,
++                                                 basevertex);
+         }
+-        ANGLE_CAPTURE(MultiDrawElementsBaseVertex, isCallValid, context, mode, count, type, indices,
+-                      drawcount, basevertex);
++        ANGLE_CAPTURE(MultiDrawElementsBaseVertex, isCallValid, context, modePacked, count,
++                      typePacked, indices, drawcount, basevertex);
      }
  }
  
@@ -2980,10 +3046,10 @@ index 780ce98a6..2087e9c7d 100644
  }
  
 diff --git a/src/libGLESv2/entry_points_gles_ext_autogen.cpp b/src/libGLESv2/entry_points_gles_ext_autogen.cpp
-index 7e022dd44..0f5b705f1 100644
+index 7e022dd44..79dd76cc3 100644
 --- a/src/libGLESv2/entry_points_gles_ext_autogen.cpp
 +++ b/src/libGLESv2/entry_points_gles_ext_autogen.cpp
-@@ -4149,6 +4149,134 @@ void GL_APIENTRY DrawBuffersEXT(GLsizei n, const GLenum *bufs)
+@@ -4149,6 +4149,137 @@ void GL_APIENTRY DrawBuffersEXT(GLsizei n, const GLenum *bufs)
      }
  }
  
@@ -3102,23 +3168,26 @@ index 7e022dd44..0f5b705f1 100644
 +
 +    if (context)
 +    {
++        PrimitiveMode modePacked                      = FromGL<PrimitiveMode>(mode);
++        DrawElementsType typePacked                   = FromGL<DrawElementsType>(type);
 +        std::unique_lock<std::mutex> shareContextLock = GetShareGroupLock(context);
-+        bool isCallValid                              = (context->skipValidation() ||
-+                            ValidateMultiDrawElementsBaseVertexEXT(context, mode, count, type,
-+                                                                   indices, primcount, basevertex));
++        bool isCallValid = (context->skipValidation() || ValidateMultiDrawElementsBaseVertexEXT(
++                                                             context, modePacked, count, typePacked,
++                                                             indices, primcount, basevertex));
 +        if (isCallValid)
 +        {
-+            context->multiDrawElementsBaseVertex(mode, count, type, indices, primcount, basevertex);
++            context->multiDrawElementsBaseVertex(modePacked, count, typePacked, indices, primcount,
++                                                 basevertex);
 +        }
-+        ANGLE_CAPTURE(MultiDrawElementsBaseVertexEXT, isCallValid, context, mode, count, type,
-+                      indices, primcount, basevertex);
++        ANGLE_CAPTURE(MultiDrawElementsBaseVertexEXT, isCallValid, context, modePacked, count,
++                      typePacked, indices, primcount, basevertex);
 +    }
 +}
 +
  // GL_EXT_geometry_shader
  void GL_APIENTRY FramebufferTextureEXT(GLenum target,
                                         GLenum attachment,
-@@ -5672,6 +5800,105 @@ void GL_APIENTRY EGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image)
+@@ -5672,6 +5803,105 @@ void GL_APIENTRY EGLImageTargetTexture2DOES(GLenum target, GLeglImageOES image)
      }
  }
  
@@ -3224,7 +3293,7 @@ index 7e022dd44..0f5b705f1 100644
  // GL_OES_draw_texture
  void GL_APIENTRY DrawTexfOES(GLfloat x, GLfloat y, GLfloat z, GLfloat width, GLfloat height)
  {
-@@ -10501,16 +10728,82 @@ void GL_APIENTRY DrawElementsBaseVertexContextANGLE(GLeglContext ctx,
+@@ -10501,16 +10731,82 @@ void GL_APIENTRY DrawElementsBaseVertexContextANGLE(GLeglContext ctx,
      if (context)
      {
          ASSERT(context == GetValidGlobalContext());
@@ -3237,13 +3306,10 @@ index 7e022dd44..0f5b705f1 100644
 +        bool isCallValid                              = (context->skipValidation() ||
 +                            ValidateDrawElementsBaseVertex(context, modePacked, count, typePacked,
 +                                                           indices, basevertex));
-         if (isCallValid)
-         {
--            context->drawElementsBaseVertex(mode, count, type, indices, basevertex);
++        if (isCallValid)
++        {
 +            context->drawElementsBaseVertex(modePacked, count, typePacked, indices, basevertex);
-         }
--        ANGLE_CAPTURE(DrawElementsBaseVertex, isCallValid, context, mode, count, type, indices,
--                      basevertex);
++        }
 +        ANGLE_CAPTURE(DrawElementsBaseVertex, isCallValid, context, modePacked, count, typePacked,
 +                      indices, basevertex);
 +    }
@@ -3304,16 +3370,19 @@ index 7e022dd44..0f5b705f1 100644
 +        bool isCallValid                              = (context->skipValidation() ||
 +                            ValidateDrawElementsBaseVertexOES(context, modePacked, count,
 +                                                              typePacked, indices, basevertex));
-+        if (isCallValid)
-+        {
+         if (isCallValid)
+         {
+-            context->drawElementsBaseVertex(mode, count, type, indices, basevertex);
 +            context->drawElementsBaseVertex(modePacked, count, typePacked, indices, basevertex);
-+        }
+         }
+-        ANGLE_CAPTURE(DrawElementsBaseVertex, isCallValid, context, mode, count, type, indices,
+-                      basevertex);
 +        ANGLE_CAPTURE(DrawElementsBaseVertexOES, isCallValid, context, modePacked, count,
 +                      typePacked, indices, basevertex);
      }
  }
  
-@@ -10626,17 +10919,89 @@ void GL_APIENTRY DrawElementsInstancedBaseVertexContextANGLE(GLeglContext ctx,
+@@ -10626,17 +10922,89 @@ void GL_APIENTRY DrawElementsInstancedBaseVertexContextANGLE(GLeglContext ctx,
      if (context)
      {
          ASSERT(context == GetValidGlobalContext());
@@ -3410,7 +3479,7 @@ index 7e022dd44..0f5b705f1 100644
      }
  }
  
-@@ -10724,17 +11089,89 @@ void GL_APIENTRY DrawRangeElementsBaseVertexContextANGLE(GLeglContext ctx,
+@@ -10724,17 +11092,89 @@ void GL_APIENTRY DrawRangeElementsBaseVertexContextANGLE(GLeglContext ctx,
      if (context)
      {
          ASSERT(context == GetValidGlobalContext());
@@ -3423,14 +3492,11 @@ index 7e022dd44..0f5b705f1 100644
 +        bool isCallValid = (context->skipValidation() || ValidateDrawRangeElementsBaseVertex(
 +                                                             context, modePacked, start, end, count,
 +                                                             typePacked, indices, basevertex));
-         if (isCallValid)
-         {
--            context->drawRangeElementsBaseVertex(mode, start, end, count, type, indices,
++        if (isCallValid)
++        {
 +            context->drawRangeElementsBaseVertex(modePacked, start, end, count, typePacked, indices,
-                                                  basevertex);
-         }
--        ANGLE_CAPTURE(DrawRangeElementsBaseVertex, isCallValid, context, mode, start, end, count,
--                      type, indices, basevertex);
++                                                 basevertex);
++        }
 +        ANGLE_CAPTURE(DrawRangeElementsBaseVertex, isCallValid, context, modePacked, start, end,
 +                      count, typePacked, indices, basevertex);
 +    }
@@ -3461,11 +3527,14 @@ index 7e022dd44..0f5b705f1 100644
 +        bool isCallValid = (context->skipValidation() || ValidateDrawRangeElementsBaseVertexEXT(
 +                                                             context, modePacked, start, end, count,
 +                                                             typePacked, indices, basevertex));
-+        if (isCallValid)
-+        {
+         if (isCallValid)
+         {
+-            context->drawRangeElementsBaseVertex(mode, start, end, count, type, indices,
 +            context->drawRangeElementsBaseVertex(modePacked, start, end, count, typePacked, indices,
-+                                                 basevertex);
-+        }
+                                                  basevertex);
+         }
+-        ANGLE_CAPTURE(DrawRangeElementsBaseVertex, isCallValid, context, mode, start, end, count,
+-                      type, indices, basevertex);
 +        ANGLE_CAPTURE(DrawRangeElementsBaseVertexEXT, isCallValid, context, modePacked, start, end,
 +                      count, typePacked, indices, basevertex);
 +    }
@@ -3506,7 +3575,7 @@ index 7e022dd44..0f5b705f1 100644
      }
  }
  
-@@ -16860,6 +17297,39 @@ void GL_APIENTRY MultMatrixxContextANGLE(GLeglContext ctx, const GLfixed *m)
+@@ -16860,6 +17300,42 @@ void GL_APIENTRY MultMatrixxContextANGLE(GLeglContext ctx, const GLfixed *m)
      }
  }
  
@@ -3530,16 +3599,19 @@ index 7e022dd44..0f5b705f1 100644
 +    if (context)
 +    {
 +        ASSERT(context == GetValidGlobalContext());
++        PrimitiveMode modePacked                      = FromGL<PrimitiveMode>(mode);
++        DrawElementsType typePacked                   = FromGL<DrawElementsType>(type);
 +        std::unique_lock<std::mutex> shareContextLock = GetShareGroupLock(context);
-+        bool isCallValid                              = (context->skipValidation() ||
-+                            ValidateMultiDrawElementsBaseVertexEXT(context, mode, count, type,
-+                                                                   indices, primcount, basevertex));
++        bool isCallValid = (context->skipValidation() || ValidateMultiDrawElementsBaseVertexEXT(
++                                                             context, modePacked, count, typePacked,
++                                                             indices, primcount, basevertex));
 +        if (isCallValid)
 +        {
-+            context->multiDrawElementsBaseVertex(mode, count, type, indices, primcount, basevertex);
++            context->multiDrawElementsBaseVertex(modePacked, count, typePacked, indices, primcount,
++                                                 basevertex);
 +        }
-+        ANGLE_CAPTURE(MultiDrawElementsBaseVertexEXT, isCallValid, context, mode, count, type,
-+                      indices, primcount, basevertex);
++        ANGLE_CAPTURE(MultiDrawElementsBaseVertexEXT, isCallValid, context, modePacked, count,
++                      typePacked, indices, primcount, basevertex);
 +    }
 +}
 +
