@@ -1,4 +1,4 @@
-From 723a345687b9bca33e1bae1ee26301c4481e3c31 Mon Sep 17 00:00:00 2001
+From 9d24b5cdfd755d6f93f3943b5a048346cbdacb2c Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls for Vulkan, OpenGL, NULL
@@ -57,6 +57,7 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libANGLE/renderer/vulkan/vk_wrapper.h     |  18 +
  src/libANGLE/validationES32.cpp               |  62 ++-
  src/libANGLE/validationES32_autogen.h         |  12 +-
+ src/libANGLE/validationESEXT.cpp              | 158 ++++++
  src/libANGLE/validationESEXT_autogen.h        |  53 ++
  src/libGL/entry_points_gl_3_2_autogen.cpp     |  44 +-
  .../entry_points_gles_3_2_autogen.cpp         |  44 +-
@@ -69,7 +70,7 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libGLESv2/proc_table_egl_autogen.cpp      |  21 +-
  util/gles_loader_autogen.cpp                  |  58 ++
  util/gles_loader_autogen.h                    |  23 +
- 55 files changed, 2136 insertions(+), 165 deletions(-)
+ 56 files changed, 2294 insertions(+), 165 deletions(-)
 
 diff --git a/include/GLES2/gl2ext_explicit_context_autogen.inc b/include/GLES2/gl2ext_explicit_context_autogen.inc
 index 75f663a00..1fe03d2f3 100644
@@ -2436,6 +2437,173 @@ index 86cdbfebd..07acd31ed 100644
                                           const void *indices,
                                           GLint basevertex);
  bool ValidateEnablei(Context *context, GLenum target, GLuint index);
+diff --git a/src/libANGLE/validationESEXT.cpp b/src/libANGLE/validationESEXT.cpp
+index 2aed04aef..65beb003c 100644
+--- a/src/libANGLE/validationESEXT.cpp
++++ b/src/libANGLE/validationESEXT.cpp
+@@ -125,4 +125,162 @@ bool ValidateGetRenderbufferImageANGLE(Context *context,
+ 
+     return true;
+ }
++
++bool ValidateDrawElementsBaseVertexEXT(Context *context,
++                                       PrimitiveMode mode,
++                                       GLsizei count,
++                                       DrawElementsType type,
++                                       const void *indices,
++                                       GLint basevertex)
++{
++    if (!context->getExtensions().drawElementsBaseVertexAny())
++    {
++        context->validationError(GL_INVALID_OPERATION, kExtensionNotEnabled);
++        return false;
++    }
++
++    return ValidateDrawElementsCommon(context, mode, count, type, indices, 1);
++}
++
++bool ValidateDrawElementsInstancedBaseVertexEXT(Context *context,
++                                                PrimitiveMode mode,
++                                                GLsizei count,
++                                                DrawElementsType type,
++                                                const void *indices,
++                                                GLsizei instancecount,
++                                                GLint basevertex)
++{
++    if (!context->getExtensions().drawElementsBaseVertexAny())
++    {
++        context->validationError(GL_INVALID_OPERATION, kExtensionNotEnabled);
++        return false;
++    }
++
++    return ValidateDrawElementsInstancedBase(context, mode, count, type, indices, instancecount);
++}
++
++bool ValidateDrawRangeElementsBaseVertexEXT(Context *context,
++                                            PrimitiveMode mode,
++                                            GLuint start,
++                                            GLuint end,
++                                            GLsizei count,
++                                            DrawElementsType type,
++                                            const void *indices,
++                                            GLint basevertex)
++{
++    if (!context->getExtensions().drawElementsBaseVertexAny())
++    {
++        context->validationError(GL_INVALID_OPERATION, kExtensionNotEnabled);
++        return false;
++    }
++
++    if (end < start)
++    {
++        context->validationError(GL_INVALID_VALUE, kInvalidElementRange);
++        return false;
++    }
++
++    if (!ValidateDrawElementsCommon(context, mode, count, type, indices, 0))
++    {
++        return false;
++    }
++
++    // Skip range checks for no-op calls.
++    if (count <= 0)
++    {
++        return true;
++    }
++
++    // Note that resolving the index range is a bit slow. We should probably optimize this.
++    IndexRange indexRange;
++    ANGLE_VALIDATION_TRY(context->getState().getVertexArray()->getIndexRange(context, type, count,
++                                                                             indices, &indexRange));
++
++    if (indexRange.end > end || indexRange.start < start)
++    {
++        // GL spec says that behavior in this case is undefined - generating an error is fine.
++        context->validationError(GL_INVALID_OPERATION, kExceedsElementRange);
++        return false;
++    }
++    return true;
++}
++
++bool ValidateDrawElementsBaseVertexOES(Context *context,
++                                       PrimitiveMode mode,
++                                       GLsizei count,
++                                       DrawElementsType type,
++                                       const void *indices,
++                                       GLint basevertex)
++{
++    if (!context->getExtensions().drawElementsBaseVertexAny())
++    {
++        context->validationError(GL_INVALID_OPERATION, kExtensionNotEnabled);
++        return false;
++    }
++
++    return ValidateDrawElementsCommon(context, mode, count, type, indices, 1);
++}
++
++bool ValidateDrawElementsInstancedBaseVertexOES(Context *context,
++                                                PrimitiveMode mode,
++                                                GLsizei count,
++                                                DrawElementsType type,
++                                                const void *indices,
++                                                GLsizei instancecount,
++                                                GLint basevertex)
++{
++    if (!context->getExtensions().drawElementsBaseVertexAny())
++    {
++        context->validationError(GL_INVALID_OPERATION, kExtensionNotEnabled);
++        return false;
++    }
++
++    return ValidateDrawElementsInstancedBase(context, mode, count, type, indices, instancecount);
++}
++
++bool ValidateDrawRangeElementsBaseVertexOES(Context *context,
++                                            PrimitiveMode mode,
++                                            GLuint start,
++                                            GLuint end,
++                                            GLsizei count,
++                                            DrawElementsType type,
++                                            const void *indices,
++                                            GLint basevertex)
++{
++    if (!context->getExtensions().drawElementsBaseVertexAny())
++    {
++        context->validationError(GL_INVALID_OPERATION, kExtensionNotEnabled);
++        return false;
++    }
++
++    if (end < start)
++    {
++        context->validationError(GL_INVALID_VALUE, kInvalidElementRange);
++        return false;
++    }
++
++    if (!ValidateDrawElementsCommon(context, mode, count, type, indices, 0))
++    {
++        return false;
++    }
++
++    // Skip range checks for no-op calls.
++    if (count <= 0)
++    {
++        return true;
++    }
++
++    // Note that resolving the index range is a bit slow. We should probably optimize this.
++    IndexRange indexRange;
++    ANGLE_VALIDATION_TRY(context->getState().getVertexArray()->getIndexRange(context, type, count,
++                                                                             indices, &indexRange));
++
++    if (indexRange.end > end || indexRange.start < start)
++    {
++        // GL spec says that behavior in this case is undefined - generating an error is fine.
++        context->validationError(GL_INVALID_OPERATION, kExceedsElementRange);
++        return false;
++    }
++    return true;
++}
+ }  // namespace gl
 diff --git a/src/libANGLE/validationESEXT_autogen.h b/src/libANGLE/validationESEXT_autogen.h
 index f20128123..87a9fba92 100644
 --- a/src/libANGLE/validationESEXT_autogen.h
