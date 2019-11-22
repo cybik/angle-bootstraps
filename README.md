@@ -1,12 +1,19 @@
-# ANGLE Dev Env Bootstrap
+# ANGLE-Builds
 
-Probably should be running this inside a Docker container with the mass of things it's pulling.
+This is ANGLE-Builds, a series of scripts for Windows and Linux to help automate
+building the [ANGLE](https://angleproject.org) library.
 
-## License? With scripts? You mad?
+That said, these scripts are not necessarily meant for local use - we use these
+to build ANGLE automatically via
+[GitHub Actions](https://github.com/features/actions).
 
-Yes, and also yes.
+Currently we have actions to build ANGLE for Linux (64-bit), Windows (32-bit and
+64-bit), UWP (64-bit), and Google Stadia (64-bit). You can see the status of our
+builds at the bottom of this README.
 
-Obviously the license doesn't apply to what's being built, only the scripts contained in this repository.
+## License
+
+These scripts are released under the MIT license. See LICENSE.md for details.
 
 ## Automation
 
