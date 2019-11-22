@@ -1,4 +1,4 @@
-From 499a11361a2f756500b3bc6fcb75238827fc19ac Mon Sep 17 00:00:00 2001
+From da370168cf9a5b004be64da2066103b12e05c9b2 Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls for Vulkan, OpenGL, NULL
@@ -24,6 +24,7 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libANGLE/Caps.cpp                         |   2 +
  src/libANGLE/Caps.h                           |  10 +
  src/libANGLE/Context.cpp                      |  45 +-
+ src/libANGLE/Context_gl.cpp                   |   4 +-
  src/libANGLE/Context_gl_3_2_autogen.h         |   3 -
  src/libANGLE/Context_gles_3_2_autogen.h       |  14 +-
  src/libANGLE/Context_gles_ext_autogen.h       |   5 +
@@ -72,7 +73,7 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libGLESv2/proc_table_egl_autogen.cpp      |  21 +-
  util/gles_loader_autogen.cpp                  |  58 ++
  util/gles_loader_autogen.h                    |  23 +
- 58 files changed, 2447 insertions(+), 174 deletions(-)
+ 59 files changed, 2449 insertions(+), 176 deletions(-)
 
 diff --git a/include/GLES2/gl2ext_explicit_context_autogen.inc b/include/GLES2/gl2ext_explicit_context_autogen.inc
 index 75f663a00..1fe03d2f3 100644
@@ -493,6 +494,22 @@ index e254a3789..90e80d92b 100644
  }
  
  void Context::drawArraysIndirect(PrimitiveMode mode, const void *indirect)
+diff --git a/src/libANGLE/Context_gl.cpp b/src/libANGLE/Context_gl.cpp
+index 0000e3447..87bd73278 100644
+--- a/src/libANGLE/Context_gl.cpp
++++ b/src/libANGLE/Context_gl.cpp
+@@ -1969,9 +1969,9 @@ void Context::texSubImage1D(GLenum target,
+     UNIMPLEMENTED();
+ }
+ 
+-void Context::multiDrawElementsBaseVertex(GLenum mode,
++void Context::multiDrawElementsBaseVertex(PrimitiveMode mode,
+                                           const GLsizei *count,
+-                                          GLenum type,
++                                          DrawElementsType type,
+                                           const void *const *indices,
+                                           GLsizei drawcount,
+                                           const GLint *basevertex)
 diff --git a/src/libANGLE/Context_gl_3_2_autogen.h b/src/libANGLE/Context_gl_3_2_autogen.h
 index 4ee6e3546..bfa7ef39d 100644
 --- a/src/libANGLE/Context_gl_3_2_autogen.h
