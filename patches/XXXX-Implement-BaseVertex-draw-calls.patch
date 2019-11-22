@@ -1,4 +1,4 @@
-From 99f80af000dc8d89c43f84c8353bccd537c2f3e3 Mon Sep 17 00:00:00 2001
+From 1225de2f3dc7f49f42f5a1f6d339a195271e9ba1 Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls for Vulkan, OpenGL, NULL
@@ -32,6 +32,7 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libANGLE/capture_gles_3_2_params.cpp      |  12 +-
  src/libANGLE/capture_gles_ext_autogen.cpp     | 204 +++++++
  src/libANGLE/capture_gles_ext_autogen.h       | 141 +++++
+ src/libANGLE/capture_gles_ext_params.cpp      |  90 ++++
  src/libANGLE/entry_points_enum_autogen.cpp    |  14 +
  src/libANGLE/entry_points_enum_autogen.h      |   7 +
  src/libANGLE/frame_capture_replay_autogen.cpp |  27 +-
@@ -70,7 +71,7 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libGLESv2/proc_table_egl_autogen.cpp      |  21 +-
  util/gles_loader_autogen.cpp                  |  58 ++
  util/gles_loader_autogen.h                    |  23 +
- 56 files changed, 2305 insertions(+), 165 deletions(-)
+ 57 files changed, 2395 insertions(+), 165 deletions(-)
 
 diff --git a/include/GLES2/gl2ext_explicit_context_autogen.inc b/include/GLES2/gl2ext_explicit_context_autogen.inc
 index 75f663a00..1fe03d2f3 100644
@@ -1140,6 +1141,107 @@ index c3c7951c9..a8c2137cf 100644
  void CaptureDrawTexfvOES_coords(const State &glState,
                                  bool isCallValid,
                                  const GLfloat *coords,
+diff --git a/src/libANGLE/capture_gles_ext_params.cpp b/src/libANGLE/capture_gles_ext_params.cpp
+index d564a4d0d..e685f4b2d 100644
+--- a/src/libANGLE/capture_gles_ext_params.cpp
++++ b/src/libANGLE/capture_gles_ext_params.cpp
+@@ -173,6 +173,96 @@ void CaptureDrawElementsInstancedANGLE_indices(const State &glState,
+     UNIMPLEMENTED();
+ }
+ 
++void CaptureDrawElementsBaseVertexEXT_indices(const State &glState,
++                                              bool isCallValid,
++                                              PrimitiveMode modePacked,
++                                              GLsizei count,
++                                              DrawElementsType typePacked,
++                                              const void *indices,
++                                              GLint basevertex,
++                                              ParamCapture *indicesParam)
++{
++    UNIMPLEMENTED();
++}
++
++void CaptureDrawElementsInstancedBaseVertexEXT_indices(const State &glState,
++                                                       bool isCallValid,
++                                                       PrimitiveMode modePacked,
++                                                       GLsizei count,
++                                                       DrawElementsType typePacked,
++                                                       const void *indices,
++                                                       GLsizei instancecount,
++                                                       GLint basevertex,
++                                                       ParamCapture *indicesParam)
++{
++    UNIMPLEMENTED();
++}
++
++void CaptureDrawRangeElementsBaseVertexEXT_indices(const State &glState,
++                                                   bool isCallValid,
++                                                   PrimitiveMode modePacked,
++                                                   GLuint start,
++                                                   GLuint end,
++                                                   GLsizei count,
++                                                   DrawElementsType typePacked,
++                                                   const void *indices,
++                                                   GLint basevertex,
++                                                   ParamCapture *indicesParam)
++{
++    UNIMPLEMENTED();
++}
++
++void CaptureMultiDrawElementsBaseVertexEXT(const State &glState,
++                                           bool isCallValid,
++                                           PrimitiveMode modePacked,
++                                           const GLsizei *count,
++                                           DrawElementsType typePacked,
++                                           const void *const *indices,
++                                           GLsizei drawcount,
++                                           const GLint *basevertex)
++{
++    return true;
++}
++
++void CaptureDrawElementsBaseVertexOES_indices(const State &glState,
++                                              bool isCallValid,
++                                              PrimitiveMode modePacked,
++                                              GLsizei count,
++                                              DrawElementsType typePacked,
++                                              const void *indices,
++                                              GLint basevertex,
++                                              ParamCapture *indicesParam)
++{
++    UNIMPLEMENTED();
++}
++
++void CaptureDrawElementsInstancedBaseVertexOES_indices(const State &glState,
++                                                       bool isCallValid,
++                                                       PrimitiveMode modePacked,
++                                                       GLsizei count,
++                                                       DrawElementsType typePacked,
++                                                       const void *indices,
++                                                       GLsizei instancecount,
++                                                       GLint basevertex,
++                                                       ParamCapture *indicesParam)
++{
++    UNIMPLEMENTED();
++}
++
++void CaptureDrawRangeElementsBaseVertexOES_indices(const State &glState,
++                                                   bool isCallValid,
++                                                   PrimitiveMode modePacked,
++                                                   GLuint start,
++                                                   GLuint end,
++                                                   GLsizei count,
++                                                   DrawElementsType typePacked,
++                                                   const void *indices,
++                                                   GLint basevertex,
++                                                   ParamCapture *indicesParam)
++{
++    UNIMPLEMENTED();
++}
++
+ void CaptureMultiDrawArraysANGLE_firsts(const State &glState,
+                                         bool isCallValid,
+                                         PrimitiveMode modePacked,
 diff --git a/src/libANGLE/entry_points_enum_autogen.cpp b/src/libANGLE/entry_points_enum_autogen.cpp
 index 3a20e7ce4..4903ab8af 100644
 --- a/src/libANGLE/entry_points_enum_autogen.cpp
