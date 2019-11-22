@@ -1,4 +1,4 @@
-From 017721364de5d93e78cba581bafb1c0828e673e2 Mon Sep 17 00:00:00 2001
+From 723a345687b9bca33e1bae1ee26301c4481e3c31 Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls for Vulkan, OpenGL, NULL
@@ -15,7 +15,10 @@ Bug: angleproject:3402
 Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
 ---
  .../GLES2/gl2ext_explicit_context_autogen.inc |  14 +
- .../GL_EGL_entry_points.json                  |  18 +-
+ .../GL_EGL_WGL_loader.json                    |   6 +-
+ .../GL_EGL_entry_points.json                  |  44 +-
+ .../GLenum_value_to_string_map.json           |   2 +-
+ .../code_generation_hashes/proc_table.json    |   4 +-
  scripts/entry_point_packed_gl_enums.json      |  12 +
  scripts/registry_xml.py                       |   2 +
  src/libANGLE/Caps.cpp                         |   2 +
@@ -63,7 +66,10 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libGLESv2/libGLESv2_autogen.def           |  18 +
  .../libGLESv2_no_capture_autogen.def          |  18 +
  .../libGLESv2_with_capture_autogen.def        |  18 +
- 49 files changed, 2016 insertions(+), 145 deletions(-)
+ src/libGLESv2/proc_table_egl_autogen.cpp      |  21 +-
+ util/gles_loader_autogen.cpp                  |  58 ++
+ util/gles_loader_autogen.h                    |  23 +
+ 55 files changed, 2136 insertions(+), 165 deletions(-)
 
 diff --git a/include/GLES2/gl2ext_explicit_context_autogen.inc b/include/GLES2/gl2ext_explicit_context_autogen.inc
 index 75f663a00..1fe03d2f3 100644
@@ -115,8 +121,33 @@ index 75f663a00..1fe03d2f3 100644
  GL_APICALL void GL_APIENTRY glObjectLabelKHRContextANGLE(GLeglContext ctx, GLenum identifier, GLuint name, GLsizei length, const GLchar *label);
  GL_APICALL void GL_APIENTRY glObjectPtrLabelKHRContextANGLE(GLeglContext ctx, const void *ptr, GLsizei length, const GLchar *label);
  GL_APICALL void GL_APIENTRY glPopDebugGroupKHRContextANGLE(GLeglContext ctx);
+diff --git a/scripts/code_generation_hashes/GL_EGL_WGL_loader.json b/scripts/code_generation_hashes/GL_EGL_WGL_loader.json
+index b810ea024..917d48df9 100644
+--- a/scripts/code_generation_hashes/GL_EGL_WGL_loader.json
++++ b/scripts/code_generation_hashes/GL_EGL_WGL_loader.json
+@@ -6,7 +6,7 @@
+   "scripts/generate_loader.py":
+     "48c60c668bec42a80378179aae2acc61",
+   "scripts/registry_xml.py":
+-    "f5fe888247ca4da9df81266a0123f7de",
++    "4f1fdc6158306914b149ade7549ad30a",
+   "scripts/wgl.xml":
+     "aa96419c582af2f6673430e2847693f4",
+   "src/libEGL/egl_loader_autogen.cpp":
+@@ -18,9 +18,9 @@
+   "util/egl_loader_autogen.h":
+     "6349dd7847bd72466919816befb6841d",
+   "util/gles_loader_autogen.cpp":
+-    "8f5e1cd93093e54d3287609680cae33c",
++    "c3025da071517953912c174680e65962",
+   "util/gles_loader_autogen.h":
+-    "5d349366c734f6f7a9cce58714fef1df",
++    "f26590cfa63a665d94b180ebd0748d21",
+   "util/windows/wgl_loader_autogen.cpp":
+     "12ffb44e5e743c826e4d84ac65cdba82",
+   "util/windows/wgl_loader_autogen.h":
 diff --git a/scripts/code_generation_hashes/GL_EGL_entry_points.json b/scripts/code_generation_hashes/GL_EGL_entry_points.json
-index 3927f7cda..f0e240475 100644
+index 3927f7cda..423498fa2 100644
 --- a/scripts/code_generation_hashes/GL_EGL_entry_points.json
 +++ b/scripts/code_generation_hashes/GL_EGL_entry_points.json
 @@ -4,7 +4,7 @@
@@ -128,16 +159,37 @@ index 3927f7cda..f0e240475 100644
    "scripts/generate_entry_points.py":
      "36f89f5514fff27ecb4baeded89ae64d",
    "scripts/gl.xml":
-@@ -62,7 +62,7 @@
+@@ -12,7 +12,7 @@
+   "scripts/gl_angle_ext.xml":
+     "d6907cd84d95ac0b32a164194eadcf53",
+   "scripts/registry_xml.py":
+-    "f5fe888247ca4da9df81266a0123f7de",
++    "4f1fdc6158306914b149ade7549ad30a",
+   "scripts/wgl.xml":
+     "aa96419c582af2f6673430e2847693f4",
+   "src/libANGLE/Context_gl_1_0_autogen.h":
+@@ -36,7 +36,7 @@
+   "src/libANGLE/Context_gl_3_1_autogen.h":
+     "1a35b7ccc5288d1f3a455152a6cc2e2c",
+   "src/libANGLE/Context_gl_3_2_autogen.h":
+-    "d956c7353be50a046b33928b347880a8",
++    "75726a2093163c9e9635e0b12df0f8f9",
+   "src/libANGLE/Context_gl_3_3_autogen.h":
+     "b7b4c2cb4ed98e35b176dca69fdb99e0",
+   "src/libANGLE/Context_gl_4_0_autogen.h":
+@@ -62,9 +62,9 @@
    "src/libANGLE/Context_gles_3_1_autogen.h":
      "8aef8ceb87eed9cc7e9586f6c98796e3",
    "src/libANGLE/Context_gles_3_2_autogen.h":
 -    "72bf9e9e488c16ddfaf700afa3335d60",
 +    "022bf1da90cc56f2e52998b87d274e64",
    "src/libANGLE/Context_gles_ext_autogen.h":
-     "4a24e91315986187921051585d04f66f",
+-    "4a24e91315986187921051585d04f66f",
++    "d0d3146d3fc6334244416c0cd195de74",
    "src/libANGLE/capture_gles_1_0_autogen.cpp":
-@@ -82,9 +82,9 @@
+     "01eb0a76c176e5cdba3102cae58334af",
+   "src/libANGLE/capture_gles_1_0_autogen.h":
+@@ -82,19 +82,19 @@
    "src/libANGLE/capture_gles_3_1_autogen.h":
      "1739a558c3e77bef37d9fa710eb78932",
    "src/libANGLE/capture_gles_3_2_autogen.cpp":
@@ -147,18 +199,24 @@ index 3927f7cda..f0e240475 100644
 -    "8d96d227765ee9b0d7b532edcc9f3bf1",
 +    "fd5e95c49bb708635e5226f963a71eb5",
    "src/libANGLE/capture_gles_ext_autogen.cpp":
-     "3bd6fcda980f381cbbad2956b896afd9",
+-    "3bd6fcda980f381cbbad2956b896afd9",
++    "fa8e244fd401d5cb84ede782848c765e",
    "src/libANGLE/capture_gles_ext_autogen.h":
-@@ -94,7 +94,7 @@
+-    "2626f039751578bd51c1cbbc1e233f5d",
++    "975d832dbc92401e2bf2d52b397c6884",
+   "src/libANGLE/entry_points_enum_autogen.cpp":
+-    "6f259507f339880bf81920738e82e688",
++    "552afb6f0ec70ff4f848fec13d676531",
    "src/libANGLE/entry_points_enum_autogen.h":
-     "3be0bc6eaae7fe2dd4f491213e5c9c81",
+-    "3be0bc6eaae7fe2dd4f491213e5c9c81",
++    "f8c1025b36be5451fb423ccec37e1c0f",
    "src/libANGLE/frame_capture_replay_autogen.cpp":
 -    "48b7051879562ab15c83e4de7af8c75d",
-+    "337fdb20b09a0abbd42b9ac866d449f9",
++    "f9cd2ab7361870ec1889c61355f706fc",
    "src/libANGLE/frame_capture_utils_autogen.cpp":
      "f0a704d60de3f1f175a7799b49c45408",
    "src/libANGLE/frame_capture_utils_autogen.h":
-@@ -106,7 +106,7 @@
+@@ -106,11 +106,11 @@
    "src/libANGLE/validationES31_autogen.h":
      "9bf34098be328bee8f9fc04d1afbdfde",
    "src/libANGLE/validationES32_autogen.h":
@@ -167,6 +225,11 @@ index 3927f7cda..f0e240475 100644
    "src/libANGLE/validationES3_autogen.h":
      "1b470a8e190aa007f093f1f13f3b1a8c",
    "src/libANGLE/validationESEXT_autogen.h":
+-    "eeabee2f488207f70931f2e3a2ff9c55",
++    "a2f1e484172c6ee44c965e71a597f847",
+   "src/libANGLE/validationGL11_autogen.h":
+     "c5ac1ca523a39df2621d11e92c9c821a",
+   "src/libANGLE/validationGL12_autogen.h":
 @@ -190,7 +190,7 @@
    "src/libGL/entry_points_gl_3_1_autogen.h":
      "6ee6613c0206d99c6afdcd3faddb52a3",
@@ -176,7 +239,7 @@ index 3927f7cda..f0e240475 100644
    "src/libGL/entry_points_gl_3_2_autogen.h":
      "347e40b5c9fd08a693bf4ffe713c61e6",
    "src/libGL/entry_points_gl_3_3_autogen.cpp":
-@@ -246,11 +246,11 @@
+@@ -246,19 +246,19 @@
    "src/libGLESv2/entry_points_gles_3_1_autogen.h":
      "043d09a964c740067bf4279e0b544aed",
    "src/libGLESv2/entry_points_gles_3_2_autogen.cpp":
@@ -186,10 +249,56 @@ index 3927f7cda..f0e240475 100644
      "e06eb4df7dc6fb29c5fd632a54b0b162",
    "src/libGLESv2/entry_points_gles_ext_autogen.cpp":
 -    "760cbaad5c626c1b27d579d6ca1b0049",
-+    "bb70e8c74333c26b1a0d46318ed55238",
++    "a584f13bc832a80b57b4ff685bbf58d3",
    "src/libGLESv2/entry_points_gles_ext_autogen.h":
-     "a8dad3044b98f7988207a65987836143",
+-    "a8dad3044b98f7988207a65987836143",
++    "62b5f609fd34c47b0b1aa9e757b0f180",
    "src/libGLESv2/libGLESv2_autogen.cpp":
+-    "7b0682a27fa050660b54ae73063f3b2d",
++    "9e7ff9ce5120295b9e61135ee01bc008",
+   "src/libGLESv2/libGLESv2_autogen.def":
+-    "cfa8370ea276c98b9bb3752bf75cb5d8",
++    "fb94a511a505ed79461b1677a185d301",
+   "src/libGLESv2/libGLESv2_no_capture_autogen.def":
+-    "a932f323fa7cfc13b4099f1741b5dc65",
++    "d9222e76f0b5ecc824bd82c975dec7ee",
+   "src/libGLESv2/libGLESv2_with_capture_autogen.def":
+-    "bd52aea6901faff81f0b0cb5f706528b"
++    "782e85c5bb72eebc8651fbcf86e0059d"
+ }
+\ No newline at end of file
+diff --git a/scripts/code_generation_hashes/GLenum_value_to_string_map.json b/scripts/code_generation_hashes/GLenum_value_to_string_map.json
+index 640edd5f7..a547ee83b 100644
+--- a/scripts/code_generation_hashes/GLenum_value_to_string_map.json
++++ b/scripts/code_generation_hashes/GLenum_value_to_string_map.json
+@@ -6,7 +6,7 @@
+   "scripts/gl_angle_ext.xml":
+     "d6907cd84d95ac0b32a164194eadcf53",
+   "scripts/registry_xml.py":
+-    "f5fe888247ca4da9df81266a0123f7de",
++    "4f1fdc6158306914b149ade7549ad30a",
+   "src/libANGLE/gl_enum_utils_autogen.cpp":
+     "3178466fb9ef26a3349fe59a76295dc3",
+   "src/libANGLE/gl_enum_utils_autogen.h":
+diff --git a/scripts/code_generation_hashes/proc_table.json b/scripts/code_generation_hashes/proc_table.json
+index d3a453173..7c5c78b01 100644
+--- a/scripts/code_generation_hashes/proc_table.json
++++ b/scripts/code_generation_hashes/proc_table.json
+@@ -10,11 +10,11 @@
+   "scripts/gl_angle_ext.xml":
+     "d6907cd84d95ac0b32a164194eadcf53",
+   "scripts/registry_xml.py":
+-    "f5fe888247ca4da9df81266a0123f7de",
++    "4f1fdc6158306914b149ade7549ad30a",
+   "scripts/wgl.xml":
+     "aa96419c582af2f6673430e2847693f4",
+   "src/libGL/proc_table_wgl_autogen.cpp":
+     "6844abf06aa6fb7a26878acb0d69df07",
+   "src/libGLESv2/proc_table_egl_autogen.cpp":
+-    "24f519e153ade8e0fdc3bff3ae05954d"
++    "9436c346cf67f3fea38ee2654dd43bf8"
+ }
+\ No newline at end of file
 diff --git a/scripts/entry_point_packed_gl_enums.json b/scripts/entry_point_packed_gl_enums.json
 index 1761267ab..19f16e85e 100644
 --- a/scripts/entry_point_packed_gl_enums.json
@@ -3646,6 +3755,234 @@ index 4694f2ebf..8ad024f1a 100644
      glMultiDrawElementsInstancedANGLEContextANGLE
      glMultiDrawElementsInstancedBaseVertexBaseInstanceANGLEContextANGLE
      glMultiTexCoord4fContextANGLE
+diff --git a/src/libGLESv2/proc_table_egl_autogen.cpp b/src/libGLESv2/proc_table_egl_autogen.cpp
+index bee7b7610..c88ddc457 100644
+--- a/src/libGLESv2/proc_table_egl_autogen.cpp
++++ b/src/libGLESv2/proc_table_egl_autogen.cpp
+@@ -402,6 +402,10 @@ ProcEntry g_procTable[] = {
+     {"glDrawBuffersEXT", P(gl::DrawBuffersEXT)},
+     {"glDrawBuffersEXTContextANGLE", P(gl::DrawBuffersEXTContextANGLE)},
+     {"glDrawElements", P(gl::DrawElements)},
++    {"glDrawElementsBaseVertexEXT", P(gl::DrawElementsBaseVertexEXT)},
++    {"glDrawElementsBaseVertexEXTContextANGLE", P(gl::DrawElementsBaseVertexEXTContextANGLE)},
++    {"glDrawElementsBaseVertexOES", P(gl::DrawElementsBaseVertexOES)},
++    {"glDrawElementsBaseVertexOESContextANGLE", P(gl::DrawElementsBaseVertexOESContextANGLE)},
+     {"glDrawElementsContextANGLE", P(gl::DrawElementsContextANGLE)},
+     {"glDrawElementsIndirect", P(gl::DrawElementsIndirect)},
+     {"glDrawElementsIndirectContextANGLE", P(gl::DrawElementsIndirectContextANGLE)},
+@@ -412,10 +416,22 @@ ProcEntry g_procTable[] = {
+      P(gl::DrawElementsInstancedBaseVertexBaseInstanceANGLE)},
+     {"glDrawElementsInstancedBaseVertexBaseInstanceANGLEContextANGLE",
+      P(gl::DrawElementsInstancedBaseVertexBaseInstanceANGLEContextANGLE)},
++    {"glDrawElementsInstancedBaseVertexEXT", P(gl::DrawElementsInstancedBaseVertexEXT)},
++    {"glDrawElementsInstancedBaseVertexEXTContextANGLE",
++     P(gl::DrawElementsInstancedBaseVertexEXTContextANGLE)},
++    {"glDrawElementsInstancedBaseVertexOES", P(gl::DrawElementsInstancedBaseVertexOES)},
++    {"glDrawElementsInstancedBaseVertexOESContextANGLE",
++     P(gl::DrawElementsInstancedBaseVertexOESContextANGLE)},
+     {"glDrawElementsInstancedContextANGLE", P(gl::DrawElementsInstancedContextANGLE)},
+     {"glDrawElementsInstancedEXT", P(gl::DrawElementsInstancedEXT)},
+     {"glDrawElementsInstancedEXTContextANGLE", P(gl::DrawElementsInstancedEXTContextANGLE)},
+     {"glDrawRangeElements", P(gl::DrawRangeElements)},
++    {"glDrawRangeElementsBaseVertexEXT", P(gl::DrawRangeElementsBaseVertexEXT)},
++    {"glDrawRangeElementsBaseVertexEXTContextANGLE",
++     P(gl::DrawRangeElementsBaseVertexEXTContextANGLE)},
++    {"glDrawRangeElementsBaseVertexOES", P(gl::DrawRangeElementsBaseVertexOES)},
++    {"glDrawRangeElementsBaseVertexOESContextANGLE",
++     P(gl::DrawRangeElementsBaseVertexOESContextANGLE)},
+     {"glDrawRangeElementsContextANGLE", P(gl::DrawRangeElementsContextANGLE)},
+     {"glDrawTexfOES", P(gl::DrawTexfOES)},
+     {"glDrawTexfOESContextANGLE", P(gl::DrawTexfOESContextANGLE)},
+@@ -1014,6 +1030,9 @@ ProcEntry g_procTable[] = {
+      P(gl::MultiDrawArraysInstancedBaseInstanceANGLEContextANGLE)},
+     {"glMultiDrawElementsANGLE", P(gl::MultiDrawElementsANGLE)},
+     {"glMultiDrawElementsANGLEContextANGLE", P(gl::MultiDrawElementsANGLEContextANGLE)},
++    {"glMultiDrawElementsBaseVertexEXT", P(gl::MultiDrawElementsBaseVertexEXT)},
++    {"glMultiDrawElementsBaseVertexEXTContextANGLE",
++     P(gl::MultiDrawElementsBaseVertexEXTContextANGLE)},
+     {"glMultiDrawElementsInstancedANGLE", P(gl::MultiDrawElementsInstancedANGLE)},
+     {"glMultiDrawElementsInstancedANGLEContextANGLE",
+      P(gl::MultiDrawElementsInstancedANGLEContextANGLE)},
+@@ -1520,5 +1539,5 @@ ProcEntry g_procTable[] = {
+     {"glWeightPointerOES", P(gl::WeightPointerOES)},
+     {"glWeightPointerOESContextANGLE", P(gl::WeightPointerOESContextANGLE)}};
+ 
+-size_t g_numProcs = 1421;
++size_t g_numProcs = 1435;
+ }  // namespace egl
+diff --git a/util/gles_loader_autogen.cpp b/util/gles_loader_autogen.cpp
+index fd8e37706..944109659 100644
+--- a/util/gles_loader_autogen.cpp
++++ b/util/gles_loader_autogen.cpp
+@@ -565,6 +565,10 @@ ANGLE_UTIL_EXPORT PFNGLGETQUERYIVEXTPROC glGetQueryivEXT;
+ ANGLE_UTIL_EXPORT PFNGLISQUERYEXTPROC glIsQueryEXT;
+ ANGLE_UTIL_EXPORT PFNGLQUERYCOUNTEREXTPROC glQueryCounterEXT;
+ ANGLE_UTIL_EXPORT PFNGLDRAWBUFFERSEXTPROC glDrawBuffersEXT;
++ANGLE_UTIL_EXPORT PFNGLDRAWELEMENTSBASEVERTEXEXTPROC glDrawElementsBaseVertexEXT;
++ANGLE_UTIL_EXPORT PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXEXTPROC glDrawElementsInstancedBaseVertexEXT;
++ANGLE_UTIL_EXPORT PFNGLDRAWRANGEELEMENTSBASEVERTEXEXTPROC glDrawRangeElementsBaseVertexEXT;
++ANGLE_UTIL_EXPORT PFNGLMULTIDRAWELEMENTSBASEVERTEXEXTPROC glMultiDrawElementsBaseVertexEXT;
+ ANGLE_UTIL_EXPORT PFNGLFRAMEBUFFERTEXTUREEXTPROC glFramebufferTextureEXT;
+ ANGLE_UTIL_EXPORT PFNGLDRAWARRAYSINSTANCEDEXTPROC glDrawArraysInstancedEXT;
+ ANGLE_UTIL_EXPORT PFNGLDRAWELEMENTSINSTANCEDEXTPROC glDrawElementsInstancedEXT;
+@@ -623,6 +627,9 @@ ANGLE_UTIL_EXPORT PFNGLTESTFENCENVPROC glTestFenceNV;
+ ANGLE_UTIL_EXPORT PFNGLEGLIMAGETARGETRENDERBUFFERSTORAGEOESPROC
+     glEGLImageTargetRenderbufferStorageOES;
+ ANGLE_UTIL_EXPORT PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES;
++ANGLE_UTIL_EXPORT PFNGLDRAWELEMENTSBASEVERTEXOESPROC glDrawElementsBaseVertexOES;
++ANGLE_UTIL_EXPORT PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXOESPROC glDrawElementsInstancedBaseVertexOES;
++ANGLE_UTIL_EXPORT PFNGLDRAWRANGEELEMENTSBASEVERTEXOESPROC glDrawRangeElementsBaseVertexOES;
+ ANGLE_UTIL_EXPORT PFNGLGETPROGRAMBINARYOESPROC glGetProgramBinaryOES;
+ ANGLE_UTIL_EXPORT PFNGLPROGRAMBINARYOESPROC glProgramBinaryOES;
+ ANGLE_UTIL_EXPORT PFNGLGETBUFFERPOINTERVOESPROC glGetBufferPointervOES;
+@@ -1358,6 +1365,14 @@ ANGLE_UTIL_EXPORT PFNGLGETQUERYIVEXTCONTEXTANGLEPROC glGetQueryivEXTContextANGLE
+ ANGLE_UTIL_EXPORT PFNGLISQUERYEXTCONTEXTANGLEPROC glIsQueryEXTContextANGLE;
+ ANGLE_UTIL_EXPORT PFNGLQUERYCOUNTEREXTCONTEXTANGLEPROC glQueryCounterEXTContextANGLE;
+ ANGLE_UTIL_EXPORT PFNGLDRAWBUFFERSEXTCONTEXTANGLEPROC glDrawBuffersEXTContextANGLE;
++ANGLE_UTIL_EXPORT PFNGLDRAWELEMENTSBASEVERTEXEXTCONTEXTANGLEPROC
++    glDrawElementsBaseVertexEXTContextANGLE;
++ANGLE_UTIL_EXPORT PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXEXTCONTEXTANGLEPROC
++    glDrawElementsInstancedBaseVertexEXTContextANGLE;
++ANGLE_UTIL_EXPORT PFNGLDRAWRANGEELEMENTSBASEVERTEXEXTCONTEXTANGLEPROC
++    glDrawRangeElementsBaseVertexEXTContextANGLE;
++ANGLE_UTIL_EXPORT PFNGLMULTIDRAWELEMENTSBASEVERTEXEXTCONTEXTANGLEPROC
++    glMultiDrawElementsBaseVertexEXTContextANGLE;
+ ANGLE_UTIL_EXPORT PFNGLFRAMEBUFFERTEXTUREEXTCONTEXTANGLEPROC glFramebufferTextureEXTContextANGLE;
+ ANGLE_UTIL_EXPORT PFNGLDRAWARRAYSINSTANCEDEXTCONTEXTANGLEPROC glDrawArraysInstancedEXTContextANGLE;
+ ANGLE_UTIL_EXPORT PFNGLDRAWELEMENTSINSTANCEDEXTCONTEXTANGLEPROC
+@@ -1430,6 +1445,12 @@ ANGLE_UTIL_EXPORT PFNGLEGLIMAGETARGETRENDERBUFFERSTORAGEOESCONTEXTANGLEPROC
+     glEGLImageTargetRenderbufferStorageOESContextANGLE;
+ ANGLE_UTIL_EXPORT PFNGLEGLIMAGETARGETTEXTURE2DOESCONTEXTANGLEPROC
+     glEGLImageTargetTexture2DOESContextANGLE;
++ANGLE_UTIL_EXPORT PFNGLDRAWELEMENTSBASEVERTEXOESCONTEXTANGLEPROC
++    glDrawElementsBaseVertexOESContextANGLE;
++ANGLE_UTIL_EXPORT PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXOESCONTEXTANGLEPROC
++    glDrawElementsInstancedBaseVertexOESContextANGLE;
++ANGLE_UTIL_EXPORT PFNGLDRAWRANGEELEMENTSBASEVERTEXOESCONTEXTANGLEPROC
++    glDrawRangeElementsBaseVertexOESContextANGLE;
+ ANGLE_UTIL_EXPORT PFNGLGETPROGRAMBINARYOESCONTEXTANGLEPROC glGetProgramBinaryOESContextANGLE;
+ ANGLE_UTIL_EXPORT PFNGLPROGRAMBINARYOESCONTEXTANGLEPROC glProgramBinaryOESContextANGLE;
+ ANGLE_UTIL_EXPORT PFNGLGETBUFFERPOINTERVOESCONTEXTANGLEPROC glGetBufferPointervOESContextANGLE;
+@@ -2387,6 +2408,15 @@ void LoadGLES(LoadProc loadProc)
+     glIsQueryEXT      = reinterpret_cast<PFNGLISQUERYEXTPROC>(loadProc("glIsQueryEXT"));
+     glQueryCounterEXT = reinterpret_cast<PFNGLQUERYCOUNTEREXTPROC>(loadProc("glQueryCounterEXT"));
+     glDrawBuffersEXT  = reinterpret_cast<PFNGLDRAWBUFFERSEXTPROC>(loadProc("glDrawBuffersEXT"));
++    glDrawElementsBaseVertexEXT = reinterpret_cast<PFNGLDRAWELEMENTSBASEVERTEXEXTPROC>(
++        loadProc("glDrawElementsBaseVertexEXT"));
++    glDrawElementsInstancedBaseVertexEXT =
++        reinterpret_cast<PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXEXTPROC>(
++            loadProc("glDrawElementsInstancedBaseVertexEXT"));
++    glDrawRangeElementsBaseVertexEXT = reinterpret_cast<PFNGLDRAWRANGEELEMENTSBASEVERTEXEXTPROC>(
++        loadProc("glDrawRangeElementsBaseVertexEXT"));
++    glMultiDrawElementsBaseVertexEXT = reinterpret_cast<PFNGLMULTIDRAWELEMENTSBASEVERTEXEXTPROC>(
++        loadProc("glMultiDrawElementsBaseVertexEXT"));
+     glFramebufferTextureEXT =
+         reinterpret_cast<PFNGLFRAMEBUFFERTEXTUREEXTPROC>(loadProc("glFramebufferTextureEXT"));
+     glDrawArraysInstancedEXT =
+@@ -2490,6 +2520,13 @@ void LoadGLES(LoadProc loadProc)
+             loadProc("glEGLImageTargetRenderbufferStorageOES"));
+     glEGLImageTargetTexture2DOES = reinterpret_cast<PFNGLEGLIMAGETARGETTEXTURE2DOESPROC>(
+         loadProc("glEGLImageTargetTexture2DOES"));
++    glDrawElementsBaseVertexOES = reinterpret_cast<PFNGLDRAWELEMENTSBASEVERTEXOESPROC>(
++        loadProc("glDrawElementsBaseVertexOES"));
++    glDrawElementsInstancedBaseVertexOES =
++        reinterpret_cast<PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXOESPROC>(
++            loadProc("glDrawElementsInstancedBaseVertexOES"));
++    glDrawRangeElementsBaseVertexOES = reinterpret_cast<PFNGLDRAWRANGEELEMENTSBASEVERTEXOESPROC>(
++        loadProc("glDrawRangeElementsBaseVertexOES"));
+     glGetProgramBinaryOES =
+         reinterpret_cast<PFNGLGETPROGRAMBINARYOESPROC>(loadProc("glGetProgramBinaryOES"));
+     glProgramBinaryOES =
+@@ -3871,6 +3908,18 @@ void LoadGLES(LoadProc loadProc)
+         loadProc("glQueryCounterEXTContextANGLE"));
+     glDrawBuffersEXTContextANGLE = reinterpret_cast<PFNGLDRAWBUFFERSEXTCONTEXTANGLEPROC>(
+         loadProc("glDrawBuffersEXTContextANGLE"));
++    glDrawElementsBaseVertexEXTContextANGLE =
++        reinterpret_cast<PFNGLDRAWELEMENTSBASEVERTEXEXTCONTEXTANGLEPROC>(
++            loadProc("glDrawElementsBaseVertexEXTContextANGLE"));
++    glDrawElementsInstancedBaseVertexEXTContextANGLE =
++        reinterpret_cast<PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXEXTCONTEXTANGLEPROC>(
++            loadProc("glDrawElementsInstancedBaseVertexEXTContextANGLE"));
++    glDrawRangeElementsBaseVertexEXTContextANGLE =
++        reinterpret_cast<PFNGLDRAWRANGEELEMENTSBASEVERTEXEXTCONTEXTANGLEPROC>(
++            loadProc("glDrawRangeElementsBaseVertexEXTContextANGLE"));
++    glMultiDrawElementsBaseVertexEXTContextANGLE =
++        reinterpret_cast<PFNGLMULTIDRAWELEMENTSBASEVERTEXEXTCONTEXTANGLEPROC>(
++            loadProc("glMultiDrawElementsBaseVertexEXTContextANGLE"));
+     glFramebufferTextureEXTContextANGLE =
+         reinterpret_cast<PFNGLFRAMEBUFFERTEXTUREEXTCONTEXTANGLEPROC>(
+             loadProc("glFramebufferTextureEXTContextANGLE"));
+@@ -4011,6 +4060,15 @@ void LoadGLES(LoadProc loadProc)
+     glEGLImageTargetTexture2DOESContextANGLE =
+         reinterpret_cast<PFNGLEGLIMAGETARGETTEXTURE2DOESCONTEXTANGLEPROC>(
+             loadProc("glEGLImageTargetTexture2DOESContextANGLE"));
++    glDrawElementsBaseVertexOESContextANGLE =
++        reinterpret_cast<PFNGLDRAWELEMENTSBASEVERTEXOESCONTEXTANGLEPROC>(
++            loadProc("glDrawElementsBaseVertexOESContextANGLE"));
++    glDrawElementsInstancedBaseVertexOESContextANGLE =
++        reinterpret_cast<PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXOESCONTEXTANGLEPROC>(
++            loadProc("glDrawElementsInstancedBaseVertexOESContextANGLE"));
++    glDrawRangeElementsBaseVertexOESContextANGLE =
++        reinterpret_cast<PFNGLDRAWRANGEELEMENTSBASEVERTEXOESCONTEXTANGLEPROC>(
++            loadProc("glDrawRangeElementsBaseVertexOESContextANGLE"));
+     glGetProgramBinaryOESContextANGLE = reinterpret_cast<PFNGLGETPROGRAMBINARYOESCONTEXTANGLEPROC>(
+         loadProc("glGetProgramBinaryOESContextANGLE"));
+     glProgramBinaryOESContextANGLE = reinterpret_cast<PFNGLPROGRAMBINARYOESCONTEXTANGLEPROC>(
+diff --git a/util/gles_loader_autogen.h b/util/gles_loader_autogen.h
+index 68c69daf1..c26ea546c 100644
+--- a/util/gles_loader_autogen.h
++++ b/util/gles_loader_autogen.h
+@@ -593,6 +593,11 @@ ANGLE_UTIL_EXPORT extern PFNGLGETQUERYIVEXTPROC glGetQueryivEXT;
+ ANGLE_UTIL_EXPORT extern PFNGLISQUERYEXTPROC glIsQueryEXT;
+ ANGLE_UTIL_EXPORT extern PFNGLQUERYCOUNTEREXTPROC glQueryCounterEXT;
+ ANGLE_UTIL_EXPORT extern PFNGLDRAWBUFFERSEXTPROC glDrawBuffersEXT;
++ANGLE_UTIL_EXPORT extern PFNGLDRAWELEMENTSBASEVERTEXEXTPROC glDrawElementsBaseVertexEXT;
++ANGLE_UTIL_EXPORT extern PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXEXTPROC
++    glDrawElementsInstancedBaseVertexEXT;
++ANGLE_UTIL_EXPORT extern PFNGLDRAWRANGEELEMENTSBASEVERTEXEXTPROC glDrawRangeElementsBaseVertexEXT;
++ANGLE_UTIL_EXPORT extern PFNGLMULTIDRAWELEMENTSBASEVERTEXEXTPROC glMultiDrawElementsBaseVertexEXT;
+ ANGLE_UTIL_EXPORT extern PFNGLFRAMEBUFFERTEXTUREEXTPROC glFramebufferTextureEXT;
+ ANGLE_UTIL_EXPORT extern PFNGLDRAWARRAYSINSTANCEDEXTPROC glDrawArraysInstancedEXT;
+ ANGLE_UTIL_EXPORT extern PFNGLDRAWELEMENTSINSTANCEDEXTPROC glDrawElementsInstancedEXT;
+@@ -653,6 +658,10 @@ ANGLE_UTIL_EXPORT extern PFNGLTESTFENCENVPROC glTestFenceNV;
+ ANGLE_UTIL_EXPORT extern PFNGLEGLIMAGETARGETRENDERBUFFERSTORAGEOESPROC
+     glEGLImageTargetRenderbufferStorageOES;
+ ANGLE_UTIL_EXPORT extern PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES;
++ANGLE_UTIL_EXPORT extern PFNGLDRAWELEMENTSBASEVERTEXOESPROC glDrawElementsBaseVertexOES;
++ANGLE_UTIL_EXPORT extern PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXOESPROC
++    glDrawElementsInstancedBaseVertexOES;
++ANGLE_UTIL_EXPORT extern PFNGLDRAWRANGEELEMENTSBASEVERTEXOESPROC glDrawRangeElementsBaseVertexOES;
+ ANGLE_UTIL_EXPORT extern PFNGLGETPROGRAMBINARYOESPROC glGetProgramBinaryOES;
+ ANGLE_UTIL_EXPORT extern PFNGLPROGRAMBINARYOESPROC glProgramBinaryOES;
+ ANGLE_UTIL_EXPORT extern PFNGLGETBUFFERPOINTERVOESPROC glGetBufferPointervOES;
+@@ -1449,6 +1458,14 @@ ANGLE_UTIL_EXPORT extern PFNGLGETQUERYIVEXTCONTEXTANGLEPROC glGetQueryivEXTConte
+ ANGLE_UTIL_EXPORT extern PFNGLISQUERYEXTCONTEXTANGLEPROC glIsQueryEXTContextANGLE;
+ ANGLE_UTIL_EXPORT extern PFNGLQUERYCOUNTEREXTCONTEXTANGLEPROC glQueryCounterEXTContextANGLE;
+ ANGLE_UTIL_EXPORT extern PFNGLDRAWBUFFERSEXTCONTEXTANGLEPROC glDrawBuffersEXTContextANGLE;
++ANGLE_UTIL_EXPORT extern PFNGLDRAWELEMENTSBASEVERTEXEXTCONTEXTANGLEPROC
++    glDrawElementsBaseVertexEXTContextANGLE;
++ANGLE_UTIL_EXPORT extern PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXEXTCONTEXTANGLEPROC
++    glDrawElementsInstancedBaseVertexEXTContextANGLE;
++ANGLE_UTIL_EXPORT extern PFNGLDRAWRANGEELEMENTSBASEVERTEXEXTCONTEXTANGLEPROC
++    glDrawRangeElementsBaseVertexEXTContextANGLE;
++ANGLE_UTIL_EXPORT extern PFNGLMULTIDRAWELEMENTSBASEVERTEXEXTCONTEXTANGLEPROC
++    glMultiDrawElementsBaseVertexEXTContextANGLE;
+ ANGLE_UTIL_EXPORT extern PFNGLFRAMEBUFFERTEXTUREEXTCONTEXTANGLEPROC
+     glFramebufferTextureEXTContextANGLE;
+ ANGLE_UTIL_EXPORT extern PFNGLDRAWARRAYSINSTANCEDEXTCONTEXTANGLEPROC
+@@ -1532,6 +1549,12 @@ ANGLE_UTIL_EXPORT extern PFNGLEGLIMAGETARGETRENDERBUFFERSTORAGEOESCONTEXTANGLEPR
+     glEGLImageTargetRenderbufferStorageOESContextANGLE;
+ ANGLE_UTIL_EXPORT extern PFNGLEGLIMAGETARGETTEXTURE2DOESCONTEXTANGLEPROC
+     glEGLImageTargetTexture2DOESContextANGLE;
++ANGLE_UTIL_EXPORT extern PFNGLDRAWELEMENTSBASEVERTEXOESCONTEXTANGLEPROC
++    glDrawElementsBaseVertexOESContextANGLE;
++ANGLE_UTIL_EXPORT extern PFNGLDRAWELEMENTSINSTANCEDBASEVERTEXOESCONTEXTANGLEPROC
++    glDrawElementsInstancedBaseVertexOESContextANGLE;
++ANGLE_UTIL_EXPORT extern PFNGLDRAWRANGEELEMENTSBASEVERTEXOESCONTEXTANGLEPROC
++    glDrawRangeElementsBaseVertexOESContextANGLE;
+ ANGLE_UTIL_EXPORT extern PFNGLGETPROGRAMBINARYOESCONTEXTANGLEPROC glGetProgramBinaryOESContextANGLE;
+ ANGLE_UTIL_EXPORT extern PFNGLPROGRAMBINARYOESCONTEXTANGLEPROC glProgramBinaryOESContextANGLE;
+ ANGLE_UTIL_EXPORT extern PFNGLGETBUFFERPOINTERVOESCONTEXTANGLEPROC
 -- 
 2.21.0
 
