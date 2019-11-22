@@ -1,4 +1,4 @@
-From 9d24b5cdfd755d6f93f3943b5a048346cbdacb2c Mon Sep 17 00:00:00 2001
+From 99f80af000dc8d89c43f84c8353bccd537c2f3e3 Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls for Vulkan, OpenGL, NULL
@@ -57,7 +57,7 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libANGLE/renderer/vulkan/vk_wrapper.h     |  18 +
  src/libANGLE/validationES32.cpp               |  62 ++-
  src/libANGLE/validationES32_autogen.h         |  12 +-
- src/libANGLE/validationESEXT.cpp              | 158 ++++++
+ src/libANGLE/validationESEXT.cpp              | 169 ++++++
  src/libANGLE/validationESEXT_autogen.h        |  53 ++
  src/libGL/entry_points_gl_3_2_autogen.cpp     |  44 +-
  .../entry_points_gles_3_2_autogen.cpp         |  44 +-
@@ -70,7 +70,7 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libGLESv2/proc_table_egl_autogen.cpp      |  21 +-
  util/gles_loader_autogen.cpp                  |  58 ++
  util/gles_loader_autogen.h                    |  23 +
- 56 files changed, 2294 insertions(+), 165 deletions(-)
+ 56 files changed, 2305 insertions(+), 165 deletions(-)
 
 diff --git a/include/GLES2/gl2ext_explicit_context_autogen.inc b/include/GLES2/gl2ext_explicit_context_autogen.inc
 index 75f663a00..1fe03d2f3 100644
@@ -2438,10 +2438,10 @@ index 86cdbfebd..07acd31ed 100644
                                           GLint basevertex);
  bool ValidateEnablei(Context *context, GLenum target, GLuint index);
 diff --git a/src/libANGLE/validationESEXT.cpp b/src/libANGLE/validationESEXT.cpp
-index 2aed04aef..65beb003c 100644
+index 2aed04aef..1df2df7c0 100644
 --- a/src/libANGLE/validationESEXT.cpp
 +++ b/src/libANGLE/validationESEXT.cpp
-@@ -125,4 +125,162 @@ bool ValidateGetRenderbufferImageANGLE(Context *context,
+@@ -125,4 +125,173 @@ bool ValidateGetRenderbufferImageANGLE(Context *context,
  
      return true;
  }
@@ -2522,6 +2522,17 @@ index 2aed04aef..65beb003c 100644
 +        context->validationError(GL_INVALID_OPERATION, kExceedsElementRange);
 +        return false;
 +    }
++    return true;
++}
++
++bool ValidateMultiDrawElementsBaseVertexEXT(Context *context,
++                                            GLenum mode,
++                                            const GLsizei *count,
++                                            GLenum type,
++                                            const void *const *indices,
++                                            GLsizei drawcount,
++                                            const GLint *basevertex)
++{
 +    return true;
 +}
 +
