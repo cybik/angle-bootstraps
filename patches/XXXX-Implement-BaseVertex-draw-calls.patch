@@ -1,4 +1,4 @@
-From b200d16c3cbcf8f60bfb5216a5b743a8f1819c62 Mon Sep 17 00:00:00 2001
+From 6cd0cd288c0e5a2ac43c8fbf9eb933db21bd0bfb Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls for Vulkan, OpenGL, NULL
@@ -1341,7 +1341,7 @@ index c6fb7c249..83f6039e7 100644
                                       gl::PrimitiveMode mode,
                                       const void *indirect) override;
 diff --git a/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.cpp b/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.cpp
-index 0ec910ed1..d4e5548a7 100644
+index 0ec910ed1..e70553096 100644
 --- a/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.cpp
 +++ b/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.cpp
 @@ -180,6 +180,13 @@ void SecondaryCommandBuffer::executeCommands(VkCommandBuffer cmdBuffer)
@@ -1384,8 +1384,8 @@ index 0ec910ed1..d4e5548a7 100644
                      result += "DrawIndexedInstanced";
                      break;
 +                case CommandID::DrawIndexedInstancedBaseVertex:
-+                    result += "DrawIndexedInstancedBaseVertex;
-+                        break;
++                    result += "DrawIndexedInstancedBaseVertex";
++                    break;
                  case CommandID::DrawInstanced:
                      result += "DrawInstanced";
                      break;
@@ -1580,7 +1580,7 @@ index c9fe77bd4..5cfc8f9c6 100644
                                                                              uint32_t instanceCount,
                                                                              uint32_t firstIndex,
 diff --git a/src/libANGLE/validationES32.cpp b/src/libANGLE/validationES32.cpp
-index 8a65450bd..2acaa056a 100644
+index 8a65450bd..ed1eed5bc 100644
 --- a/src/libANGLE/validationES32.cpp
 +++ b/src/libANGLE/validationES32.cpp
 @@ -118,35 +118,81 @@ bool ValidateDisablei(Context *context, GLenum target, GLuint index)
@@ -1596,9 +1596,9 @@ index 8a65450bd..2acaa056a 100644
                                      GLint basevertex)
  {
 -    return true;
-+    if (context->getClientMajorVersion() < 3)
++    if (!context->getExtensions().drawElementsBaseVertex)
 +    {
-+        context->validationError(GL_INVALID_OPERATION, kES3Required);
++        context->validationError(GL_INVALID_OPERATION, kExtensionNotEnabled);
 +        return false;
 +    }
 +
@@ -1616,9 +1616,9 @@ index 8a65450bd..2acaa056a 100644
                                               GLint basevertex)
  {
 -    return true;
-+    if (context->getClientMajorVersion() < 3)
++    if (!context->getExtensions().drawElementsBaseVertex)
 +    {
-+        context->validationError(GL_INVALID_OPERATION, kES3Required);
++        context->validationError(GL_INVALID_OPERATION, kExtensionNotEnabled);
 +        return false;
 +    }
 +
@@ -1636,9 +1636,9 @@ index 8a65450bd..2acaa056a 100644
                                           const void *indices,
                                           GLint basevertex)
  {
-+    if (context->getClientMajorVersion() < 3)
++    if (!context->getExtensions().drawElementsBaseVertex)
 +    {
-+        context->validationError(GL_INVALID_OPERATION, kES3Required);
++        context->validationError(GL_INVALID_OPERATION, kExtensionNotEnabled);
 +        return false;
 +    }
 +
