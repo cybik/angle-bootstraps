@@ -1,7 +1,9 @@
 # ANGLE-Builds
 
 This is ANGLE-Builds, a series of scripts for Windows and Linux to help automate
-building the [ANGLE](https://angleproject.org) library.
+building the
+[ANGLE](https://chromium.googlesource.com/angle/angle/+/master/README.md)
+library.
 
 That said, these scripts are not necessarily meant for local use - we use these
 to build ANGLE automatically via
