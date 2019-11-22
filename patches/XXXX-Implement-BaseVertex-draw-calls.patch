@@ -1,4 +1,4 @@
-From 1225de2f3dc7f49f42f5a1f6d339a195271e9ba1 Mon Sep 17 00:00:00 2001
+From 97e8e85b92f75b255369d138074669da18aefdf2 Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls for Vulkan, OpenGL, NULL
@@ -1142,7 +1142,7 @@ index c3c7951c9..a8c2137cf 100644
                                  bool isCallValid,
                                  const GLfloat *coords,
 diff --git a/src/libANGLE/capture_gles_ext_params.cpp b/src/libANGLE/capture_gles_ext_params.cpp
-index d564a4d0d..e685f4b2d 100644
+index d564a4d0d..5a0fefaa0 100644
 --- a/src/libANGLE/capture_gles_ext_params.cpp
 +++ b/src/libANGLE/capture_gles_ext_params.cpp
 @@ -173,6 +173,96 @@ void CaptureDrawElementsInstancedANGLE_indices(const State &glState,
@@ -1197,7 +1197,7 @@ index d564a4d0d..e685f4b2d 100644
 +                                           GLsizei drawcount,
 +                                           const GLint *basevertex)
 +{
-+    return true;
++    UNIMPLEMENTED();
 +}
 +
 +void CaptureDrawElementsBaseVertexOES_indices(const State &glState,
