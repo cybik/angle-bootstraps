@@ -1,4 +1,4 @@
-From 97e8e85b92f75b255369d138074669da18aefdf2 Mon Sep 17 00:00:00 2001
+From 8c23f58da0004e33e496dc864e842734fe17b00e Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls for Vulkan, OpenGL, NULL
@@ -32,7 +32,7 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libANGLE/capture_gles_3_2_params.cpp      |  12 +-
  src/libANGLE/capture_gles_ext_autogen.cpp     | 204 +++++++
  src/libANGLE/capture_gles_ext_autogen.h       | 141 +++++
- src/libANGLE/capture_gles_ext_params.cpp      |  90 ++++
+ src/libANGLE/capture_gles_ext_params.cpp      | 117 ++++
  src/libANGLE/entry_points_enum_autogen.cpp    |  14 +
  src/libANGLE/entry_points_enum_autogen.h      |   7 +
  src/libANGLE/frame_capture_replay_autogen.cpp |  27 +-
@@ -71,7 +71,7 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libGLESv2/proc_table_egl_autogen.cpp      |  21 +-
  util/gles_loader_autogen.cpp                  |  58 ++
  util/gles_loader_autogen.h                    |  23 +
- 57 files changed, 2395 insertions(+), 165 deletions(-)
+ 57 files changed, 2422 insertions(+), 165 deletions(-)
 
 diff --git a/include/GLES2/gl2ext_explicit_context_autogen.inc b/include/GLES2/gl2ext_explicit_context_autogen.inc
 index 75f663a00..1fe03d2f3 100644
@@ -1142,10 +1142,10 @@ index c3c7951c9..a8c2137cf 100644
                                  bool isCallValid,
                                  const GLfloat *coords,
 diff --git a/src/libANGLE/capture_gles_ext_params.cpp b/src/libANGLE/capture_gles_ext_params.cpp
-index d564a4d0d..5a0fefaa0 100644
+index d564a4d0d..5a4d7f7c6 100644
 --- a/src/libANGLE/capture_gles_ext_params.cpp
 +++ b/src/libANGLE/capture_gles_ext_params.cpp
-@@ -173,6 +173,96 @@ void CaptureDrawElementsInstancedANGLE_indices(const State &glState,
+@@ -173,6 +173,123 @@ void CaptureDrawElementsInstancedANGLE_indices(const State &glState,
      UNIMPLEMENTED();
  }
  
@@ -1188,14 +1188,28 @@ index d564a4d0d..5a0fefaa0 100644
 +    UNIMPLEMENTED();
 +}
 +
-+void CaptureMultiDrawElementsBaseVertexEXT(const State &glState,
-+                                           bool isCallValid,
-+                                           PrimitiveMode modePacked,
-+                                           const GLsizei *count,
-+                                           DrawElementsType typePacked,
-+                                           const void *const *indices,
-+                                           GLsizei drawcount,
-+                                           const GLint *basevertex)
++void CaptureMultiDrawElementsBaseVertexEXT_indices(const State &glState,
++                                                   bool isCallValid,
++                                                   PrimitiveMode modePacked,
++                                                   const GLsizei *count,
++                                                   DrawElementsType typePacked,
++                                                   const void *const *indices,
++                                                   GLsizei drawcount,
++                                                   const GLint *basevertex,
++                                                   ParamCapture *indicesParam)
++{
++    UNIMPLEMENTED();
++}
++
++void CaptureMultiDrawElementsBaseVertexEXT_count(const State &glState,
++                                                 bool isCallValid,
++                                                 PrimitiveMode modePacked,
++                                                 const GLsizei *count,
++                                                 DrawElementsType typePacked,
++                                                 const void *const *indices,
++                                                 GLsizei drawcount,
++                                                 const GLint *basevertex,
++                                                 ParamCapture *countParam)
 +{
 +    UNIMPLEMENTED();
 +}
@@ -1208,6 +1222,19 @@ index d564a4d0d..5a0fefaa0 100644
 +                                              const void *indices,
 +                                              GLint basevertex,
 +                                              ParamCapture *indicesParam)
++{
++    UNIMPLEMENTED();
++}
++
++void CaptureMultiDrawElementsBaseVertexEXT_basevertex(const State &glState,
++                                                      bool isCallValid,
++                                                      PrimitiveMode modePacked,
++                                                      const GLsizei *count,
++                                                      DrawElementsType typePacked,
++                                                      const void *const *indices,
++                                                      GLsizei drawcount,
++                                                      const GLint *basevertex,
++                                                      ParamCapture *basevertexParam)
 +{
 +    UNIMPLEMENTED();
 +}
