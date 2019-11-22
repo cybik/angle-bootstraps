@@ -1,4 +1,4 @@
-From 8c23f58da0004e33e496dc864e842734fe17b00e Mon Sep 17 00:00:00 2001
+From 1a5d746d571b6bff47ae5075ad0bcca6e8ee37e8 Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls for Vulkan, OpenGL, NULL
@@ -1142,7 +1142,7 @@ index c3c7951c9..a8c2137cf 100644
                                  bool isCallValid,
                                  const GLfloat *coords,
 diff --git a/src/libANGLE/capture_gles_ext_params.cpp b/src/libANGLE/capture_gles_ext_params.cpp
-index d564a4d0d..5a4d7f7c6 100644
+index d564a4d0d..a2243157a 100644
 --- a/src/libANGLE/capture_gles_ext_params.cpp
 +++ b/src/libANGLE/capture_gles_ext_params.cpp
 @@ -173,6 +173,123 @@ void CaptureDrawElementsInstancedANGLE_indices(const State &glState,
@@ -1188,19 +1188,6 @@ index d564a4d0d..5a4d7f7c6 100644
 +    UNIMPLEMENTED();
 +}
 +
-+void CaptureMultiDrawElementsBaseVertexEXT_indices(const State &glState,
-+                                                   bool isCallValid,
-+                                                   PrimitiveMode modePacked,
-+                                                   const GLsizei *count,
-+                                                   DrawElementsType typePacked,
-+                                                   const void *const *indices,
-+                                                   GLsizei drawcount,
-+                                                   const GLint *basevertex,
-+                                                   ParamCapture *indicesParam)
-+{
-+    UNIMPLEMENTED();
-+}
-+
 +void CaptureMultiDrawElementsBaseVertexEXT_count(const State &glState,
 +                                                 bool isCallValid,
 +                                                 PrimitiveMode modePacked,
@@ -1214,14 +1201,15 @@ index d564a4d0d..5a4d7f7c6 100644
 +    UNIMPLEMENTED();
 +}
 +
-+void CaptureDrawElementsBaseVertexOES_indices(const State &glState,
-+                                              bool isCallValid,
-+                                              PrimitiveMode modePacked,
-+                                              GLsizei count,
-+                                              DrawElementsType typePacked,
-+                                              const void *indices,
-+                                              GLint basevertex,
-+                                              ParamCapture *indicesParam)
++void CaptureMultiDrawElementsBaseVertexEXT_indices(const State &glState,
++                                                   bool isCallValid,
++                                                   PrimitiveMode modePacked,
++                                                   const GLsizei *count,
++                                                   DrawElementsType typePacked,
++                                                   const void *const *indices,
++                                                   GLsizei drawcount,
++                                                   const GLint *basevertex,
++                                                   ParamCapture *indicesParam)
 +{
 +    UNIMPLEMENTED();
 +}
@@ -1235,6 +1223,18 @@ index d564a4d0d..5a4d7f7c6 100644
 +                                                      GLsizei drawcount,
 +                                                      const GLint *basevertex,
 +                                                      ParamCapture *basevertexParam)
++{
++    UNIMPLEMENTED();
++}
++
++void CaptureDrawElementsBaseVertexOES_indices(const State &glState,
++                                              bool isCallValid,
++                                              PrimitiveMode modePacked,
++                                              GLsizei count,
++                                              DrawElementsType typePacked,
++                                              const void *indices,
++                                              GLint basevertex,
++                                              ParamCapture *indicesParam)
 +{
 +    UNIMPLEMENTED();
 +}
