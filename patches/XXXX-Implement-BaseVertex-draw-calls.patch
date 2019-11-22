@@ -1,4 +1,4 @@
-From 1af9ec4341df5c24850441afd57110e80dbf245e Mon Sep 17 00:00:00 2001
+From b200d16c3cbcf8f60bfb5216a5b743a8f1819c62 Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls for Vulkan, OpenGL, NULL
@@ -16,10 +16,13 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
 ---
  .../GL_EGL_entry_points.json                  | 18 ++--
  scripts/entry_point_packed_gl_enums.json      | 12 +++
+ src/libANGLE/Caps.cpp                         |  1 +
+ src/libANGLE/Caps.h                           |  3 +
  src/libANGLE/Context.cpp                      | 45 ++++++++--
  src/libANGLE/Context_gles_3_2_autogen.h       | 14 ++--
  src/libANGLE/capture_gles_3_2_autogen.cpp     | 37 +++++----
  src/libANGLE/capture_gles_3_2_autogen.h       | 24 +++---
+ src/libANGLE/capture_gles_3_2_params.cpp      | 12 +--
  src/libANGLE/frame_capture_replay_autogen.cpp | 15 ++--
  src/libANGLE/renderer/ContextImpl.h           | 21 +++++
  src/libANGLE/renderer/d3d/d3d11/Context11.cpp | 39 +++++++++
@@ -28,14 +31,16 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libANGLE/renderer/d3d/d3d9/Context9.h     | 21 +++++
  src/libANGLE/renderer/gl/ContextGL.cpp        | 83 +++++++++++++++++++
  src/libANGLE/renderer/gl/ContextGL.h          | 21 +++++
+ src/libANGLE/renderer/gl/renderergl_utils.cpp |  6 ++
  src/libANGLE/renderer/metal/ContextMtl.h      | 21 +++++
  src/libANGLE/renderer/metal/ContextMtl.mm     | 36 ++++++++
  src/libANGLE/renderer/null/ContextNULL.cpp    | 33 ++++++++
  src/libANGLE/renderer/null/ContextNULL.h      | 21 +++++
  src/libANGLE/renderer/vulkan/ContextVk.cpp    | 66 ++++++++++++++-
  src/libANGLE/renderer/vulkan/ContextVk.h      | 21 +++++
- .../vulkan/SecondaryCommandBuffer.cpp         | 15 ++++
+ .../vulkan/SecondaryCommandBuffer.cpp         | 21 +++++
  .../renderer/vulkan/SecondaryCommandBuffer.h  | 43 ++++++++++
+ .../renderer/vulkan/vk_caps_utils.cpp         |  7 +-
  src/libANGLE/renderer/vulkan/vk_helpers.cpp   |  4 +-
  src/libANGLE/renderer/vulkan/vk_helpers.h     |  2 +-
  src/libANGLE/renderer/vulkan/vk_wrapper.h     | 18 ++++
@@ -44,7 +49,7 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libGL/entry_points_gl_3_2_autogen.cpp     | 44 +++++-----
  .../entry_points_gles_3_2_autogen.cpp         | 44 +++++-----
  .../entry_points_gles_ext_autogen.cpp         | 44 +++++-----
- 30 files changed, 757 insertions(+), 136 deletions(-)
+ 35 files changed, 784 insertions(+), 144 deletions(-)
 
 diff --git a/scripts/code_generation_hashes/GL_EGL_entry_points.json b/scripts/code_generation_hashes/GL_EGL_entry_points.json
 index 3927f7cda..f0e240475 100644
@@ -158,6 +163,32 @@ index 1761267ab..19f16e85e 100644
      "glDrawTransformFeedback": {
          "id": "TransformFeedbackID"
      },
+diff --git a/src/libANGLE/Caps.cpp b/src/libANGLE/Caps.cpp
+index d72a6f499..7e633cdec 100644
+--- a/src/libANGLE/Caps.cpp
++++ b/src/libANGLE/Caps.cpp
+@@ -897,6 +897,7 @@ const ExtensionInfoMap &GetExtensionInfoMap()
+         map["GL_ANGLE_texture_external_update"] = enableableExtension(&Extensions::textureExternalUpdateANGLE);
+         map["GL_ANGLE_base_vertex_base_instance"] = enableableExtension(&Extensions::baseVertexBaseInstance);
+         map["GL_ANGLE_get_image"] = enableableExtension(&Extensions::getImageANGLE);
++        map["GL_OES_draw_elements_base_vertex"] = enableableExtension(&Extensions::drawElementsBaseVertex);
+         // GLES1 extensinos
+         map["GL_OES_point_size_array"] = enableableExtension(&Extensions::pointSizeArray);
+         map["GL_OES_texture_cube_map"] = enableableExtension(&Extensions::textureCubeMap);
+diff --git a/src/libANGLE/Caps.h b/src/libANGLE/Caps.h
+index a51fff297..089289adf 100644
+--- a/src/libANGLE/Caps.h
++++ b/src/libANGLE/Caps.h
+@@ -544,6 +544,9 @@ struct Extensions
+ 
+     // GL_ANGLE_get_image
+     bool getImageANGLE = false;
++
++    // GL_OES_draw_elements_base_vertex
++    bool drawElementsBaseVertex = false;
+ };
+ 
+ // Pointer to a boolean memeber of the Extensions struct
 diff --git a/src/libANGLE/Context.cpp b/src/libANGLE/Context.cpp
 index 8750e695a..36b46401b 100644
 --- a/src/libANGLE/Context.cpp
@@ -433,6 +464,48 @@ index 00b5859ae..828c5589e 100644
                                                  const void *indices,
                                                  GLint basevertex,
                                                  angle::ParamCapture *paramCapture);
+diff --git a/src/libANGLE/capture_gles_3_2_params.cpp b/src/libANGLE/capture_gles_3_2_params.cpp
+index c3210c355..cbd887750 100644
+--- a/src/libANGLE/capture_gles_3_2_params.cpp
++++ b/src/libANGLE/capture_gles_3_2_params.cpp
+@@ -50,9 +50,9 @@ void CaptureDebugMessageInsert_buf(const State &glState,
+ 
+ void CaptureDrawElementsBaseVertex_indices(const State &glState,
+                                            bool isCallValid,
+-                                           GLenum mode,
++                                           PrimitiveMode modePacked,
+                                            GLsizei count,
+-                                           GLenum type,
++                                           DrawElementsType typePacked,
+                                            const void *indices,
+                                            GLint basevertex,
+                                            ParamCapture *indicesParam)
+@@ -62,9 +62,9 @@ void CaptureDrawElementsBaseVertex_indices(const State &glState,
+ 
+ void CaptureDrawElementsInstancedBaseVertex_indices(const State &glState,
+                                                     bool isCallValid,
+-                                                    GLenum mode,
++                                                    PrimitiveMode modePacked,
+                                                     GLsizei count,
+-                                                    GLenum type,
++                                                    DrawElementsType typePacked,
+                                                     const void *indices,
+                                                     GLsizei instancecount,
+                                                     GLint basevertex,
+@@ -75,11 +75,11 @@ void CaptureDrawElementsInstancedBaseVertex_indices(const State &glState,
+ 
+ void CaptureDrawRangeElementsBaseVertex_indices(const State &glState,
+                                                 bool isCallValid,
+-                                                GLenum mode,
++                                                PrimitiveMode modePacked,
+                                                 GLuint start,
+                                                 GLuint end,
+                                                 GLsizei count,
+-                                                GLenum type,
++                                                DrawElementsType typePacked,
+                                                 const void *indices,
+                                                 GLint basevertex,
+                                                 ParamCapture *indicesParam)
 diff --git a/src/libANGLE/frame_capture_replay_autogen.cpp b/src/libANGLE/frame_capture_replay_autogen.cpp
 index 62687501c..c8504b5ec 100644
 --- a/src/libANGLE/frame_capture_replay_autogen.cpp
@@ -891,6 +964,23 @@ index 06b174fbc..977ea2ecb 100644
      angle::Result drawArraysIndirect(const gl::Context *context,
                                       gl::PrimitiveMode mode,
                                       const void *indirect) override;
+diff --git a/src/libANGLE/renderer/gl/renderergl_utils.cpp b/src/libANGLE/renderer/gl/renderergl_utils.cpp
+index 35c5c14b5..1904e886a 100644
+--- a/src/libANGLE/renderer/gl/renderergl_utils.cpp
++++ b/src/libANGLE/renderer/gl/renderergl_utils.cpp
+@@ -1421,6 +1421,12 @@ void GenerateCaps(const FunctionsGL *functions,
+         functions->hasGLESExtension("GL_OES_draw_elements_base_vertex") ||
+         functions->hasGLESExtension("GL_EXT_draw_elements_base_vertex");
+ 
++    // OES_draw_elements_base_vertex
++    extensions->drawElementsBaseVertex =
++        functions->isAtLeastGL(gl::Version(3, 2)) || functions->isAtLeastGLES(gl::Version(3, 2)) ||
++        functions->hasGLESExtension("GL_OES_draw_elements_base_vertex") ||
++        functions->hasGLESExtension("GL_EXT_draw_elements_base_vertex");
++
+     // ANGLE_compressed_texture_etc
+     // Expose this extension only when we support the formats or we're running on top of a native
+     // ES driver.
 diff --git a/src/libANGLE/renderer/metal/ContextMtl.h b/src/libANGLE/renderer/metal/ContextMtl.h
 index a8738e7f5..e4fe2504a 100644
 --- a/src/libANGLE/renderer/metal/ContextMtl.h
@@ -1251,7 +1341,7 @@ index c6fb7c249..83f6039e7 100644
                                       gl::PrimitiveMode mode,
                                       const void *indirect) override;
 diff --git a/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.cpp b/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.cpp
-index 0ec910ed1..ae4337f9e 100644
+index 0ec910ed1..d4e5548a7 100644
 --- a/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.cpp
 +++ b/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.cpp
 @@ -180,6 +180,13 @@ void SecondaryCommandBuffer::executeCommands(VkCommandBuffer cmdBuffer)
@@ -1283,6 +1373,22 @@ index 0ec910ed1..ae4337f9e 100644
                  case CommandID::DrawIndexedInstancedBaseVertexBaseInstance:
                  {
                      const DrawIndexedInstancedBaseVertexBaseInstanceParams *params =
+@@ -444,9 +459,15 @@ std::string SecondaryCommandBuffer::dumpCommands(const char *separator) const
+                 case CommandID::DrawIndexed:
+                     result += "DrawIndexed";
+                     break;
++                case CommandID::DrawIndexedBaseVertex:
++                    result += "DrawIndexedBaseVertex";
++                    break;
+                 case CommandID::DrawIndexedInstanced:
+                     result += "DrawIndexedInstanced";
+                     break;
++                case CommandID::DrawIndexedInstancedBaseVertex:
++                    result += "DrawIndexedInstancedBaseVertex;
++                        break;
+                 case CommandID::DrawInstanced:
+                     result += "DrawInstanced";
+                     break;
 diff --git a/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.h b/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.h
 index cc3704668..19c2c9a1c 100644
 --- a/src/libANGLE/renderer/vulkan/SecondaryCommandBuffer.h
@@ -1375,6 +1481,31 @@ index cc3704668..19c2c9a1c 100644
  ANGLE_INLINE void SecondaryCommandBuffer::drawIndexedInstancedBaseVertexBaseInstance(
      uint32_t indexCount,
      uint32_t instanceCount,
+diff --git a/src/libANGLE/renderer/vulkan/vk_caps_utils.cpp b/src/libANGLE/renderer/vulkan/vk_caps_utils.cpp
+index 6d230649d..925d97a39 100644
+--- a/src/libANGLE/renderer/vulkan/vk_caps_utils.cpp
++++ b/src/libANGLE/renderer/vulkan/vk_caps_utils.cpp
+@@ -66,6 +66,9 @@ void RendererVk::ensureCapsInitialized() const
+     // Enable ANGLE_base_vertex_base_instance
+     mNativeExtensions.baseVertexBaseInstance = true;
+ 
++    // Enable OES_draw_elements_base_vertex
++    mNativeExtensions.drawElementsBaseVertex = true;
++
+     // Enable EXT_blend_minmax
+     mNativeExtensions.blendMinMax = true;
+ 
+@@ -130,8 +133,8 @@ void RendererVk::ensureCapsInitialized() const
+     mNativeExtensions.getImageANGLE = true;
+ 
+     // https://vulkan.lunarg.com/doc/view/1.0.30.0/linux/vkspec.chunked/ch31s02.html
+-    mNativeCaps.maxElementIndex       = std::numeric_limits<GLuint>::max() - 1;
+-    mNativeCaps.max3DTextureSize      = limitsVk.maxImageDimension3D;
++    mNativeCaps.maxElementIndex  = std::numeric_limits<GLuint>::max() - 1;
++    mNativeCaps.max3DTextureSize = limitsVk.maxImageDimension3D;
+     mNativeCaps.max2DTextureSize =
+         std::min(limitsVk.maxFramebufferWidth, limitsVk.maxImageDimension2D);
+     mNativeCaps.maxArrayTextureLayers = limitsVk.maxImageArrayLayers;
 diff --git a/src/libANGLE/renderer/vulkan/vk_helpers.cpp b/src/libANGLE/renderer/vulkan/vk_helpers.cpp
 index bcc37ffb6..038b4a11f 100644
 --- a/src/libANGLE/renderer/vulkan/vk_helpers.cpp
