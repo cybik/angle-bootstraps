@@ -1,4 +1,4 @@
-From 133cae709adeac0138390da281e0806184957af6 Mon Sep 17 00:00:00 2001
+From 90e74e9d52855629be6a5f8483cd0493b4d358e7 Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls for Vulkan, OpenGL, NULL
@@ -61,6 +61,7 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libANGLE/validationES32_autogen.h         |  12 +-
  src/libANGLE/validationESEXT.cpp              | 169 ++++++
  src/libANGLE/validationESEXT_autogen.h        |  53 ++
+ src/libANGLE/validationGL32.cpp               |   4 +-
  src/libANGLE/validationGL32_autogen.h         |   4 +-
  src/libGL/entry_points_gl_3_2_autogen.cpp     |  59 +-
  .../entry_points_gles_3_2_autogen.cpp         |  44 +-
@@ -73,7 +74,7 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libGLESv2/proc_table_egl_autogen.cpp      |  21 +-
  util/gles_loader_autogen.cpp                  |  58 ++
  util/gles_loader_autogen.h                    |  23 +
- 59 files changed, 2449 insertions(+), 176 deletions(-)
+ 60 files changed, 2451 insertions(+), 178 deletions(-)
 
 diff --git a/include/GLES2/gl2ext_explicit_context_autogen.inc b/include/GLES2/gl2ext_explicit_context_autogen.inc
 index 75f663a00..1fe03d2f3 100644
@@ -2856,6 +2857,22 @@ index f20128123..fdf614230 100644
  // GL_OES_draw_texture
  bool ValidateDrawTexfOES(Context *context,
                           GLfloat x,
+diff --git a/src/libANGLE/validationGL32.cpp b/src/libANGLE/validationGL32.cpp
+index 57e0ed1d2..10e037d11 100644
+--- a/src/libANGLE/validationGL32.cpp
++++ b/src/libANGLE/validationGL32.cpp
+@@ -12,9 +12,9 @@ namespace gl
+ {
+ 
+ bool ValidateMultiDrawElementsBaseVertex(Context *context,
+-                                         GLenum mode,
++                                         PrimitiveMode mode,
+                                          const GLsizei *count,
+-                                         GLenum type,
++                                         DrawElementsType type,
+                                          const void *const *indices,
+                                          GLsizei drawcount,
+                                          const GLint *basevertex)
 diff --git a/src/libANGLE/validationGL32_autogen.h b/src/libANGLE/validationGL32_autogen.h
 index faa62de27..76ac2088d 100644
 --- a/src/libANGLE/validationGL32_autogen.h
