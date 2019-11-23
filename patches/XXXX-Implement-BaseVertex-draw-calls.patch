@@ -1,4 +1,4 @@
-From 90e74e9d52855629be6a5f8483cd0493b4d358e7 Mon Sep 17 00:00:00 2001
+From b6ea0f5f30c2fb17319e0f21da63da26b67c0788 Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls for Vulkan, OpenGL, NULL
@@ -72,9 +72,10 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  .../libGLESv2_no_capture_autogen.def          |  18 +
  .../libGLESv2_with_capture_autogen.def        |  18 +
  src/libGLESv2/proc_table_egl_autogen.cpp      |  21 +-
+ .../deqp_gles31_test_expectations.txt         |   3 +
  util/gles_loader_autogen.cpp                  |  58 ++
  util/gles_loader_autogen.h                    |  23 +
- 60 files changed, 2451 insertions(+), 178 deletions(-)
+ 61 files changed, 2454 insertions(+), 178 deletions(-)
 
 diff --git a/include/GLES2/gl2ext_explicit_context_autogen.inc b/include/GLES2/gl2ext_explicit_context_autogen.inc
 index 75f663a00..1fe03d2f3 100644
@@ -4224,6 +4225,20 @@ index bee7b7610..c88ddc457 100644
 -size_t g_numProcs = 1421;
 +size_t g_numProcs = 1435;
  }  // namespace egl
+diff --git a/src/tests/deqp_support/deqp_gles31_test_expectations.txt b/src/tests/deqp_support/deqp_gles31_test_expectations.txt
+index 4fcbaa37b..d933cb192 100644
+--- a/src/tests/deqp_support/deqp_gles31_test_expectations.txt
++++ b/src/tests/deqp_support/deqp_gles31_test_expectations.txt
+@@ -649,6 +649,9 @@
+ 3683 VULKAN PIXEL2ORXL : dEQP-GLES31.functional.stencil_texturing.format.* = FAIL
+ 3683 VULKAN PIXEL2ORXL : dEQP-GLES31.functional.stencil_texturing.misc.compare_mode_effect = FAIL
+ 
++// Instanced lines with base vertex:
++3582 VULKAN PIXEL2ORXL : dEQP-GLES31.functional.draw_base_vertex.draw_elements_instanced_base_vertex.lines.instanced_attributes = FAIL
++
+ // Need to support non-color when staging image updates
+ 4080 ANDROID VULKAN : dEQP-GLES31.functional.stencil_texturing.misc.base_level = SKIP
+ 
 diff --git a/util/gles_loader_autogen.cpp b/util/gles_loader_autogen.cpp
 index fd8e37706..944109659 100644
 --- a/util/gles_loader_autogen.cpp
