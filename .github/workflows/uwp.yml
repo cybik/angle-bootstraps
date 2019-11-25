@@ -52,7 +52,6 @@ jobs:
           git clone https://chromium.googlesource.com/angle/angle
           cd angle
           git apply ../patches/0001-HACK-Allow-feature-level-10.0-to-use-ES-3.0.patch
-          git apply ../patches/XXXX-Implement-BaseVertex-draw-calls.patch
       - name: Bootstrap ${{ matrix.variant }} ANGLE UWP dependencies on ${{ matrix.os }}
         shell: pwsh
         run: |
