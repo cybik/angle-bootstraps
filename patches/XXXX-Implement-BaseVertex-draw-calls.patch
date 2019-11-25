@@ -1,4 +1,4 @@
-From 537474f4d30428e2992b80c17841963011c26225 Mon Sep 17 00:00:00 2001
+From 18cdfe31e3b47b868ce9c44fd693289a71324e3c Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls for Vulkan, OpenGL, NULL
@@ -19,7 +19,6 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  .../GL_EGL_WGL_loader.json                    |   6 +-
  .../GL_EGL_entry_points.json                  |  46 +-
  .../GLenum_value_to_string_map.json           |   2 +-
- ...Vulkan_mandatory_format_support_table.json |   2 +-
  .../code_generation_hashes/proc_table.json    |   4 +-
  scripts/entry_point_packed_gl_enums.json      |  16 +
  scripts/registry_xml.py                       |   2 +
@@ -77,7 +76,7 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  .../deqp_gles31_test_expectations.txt         |   3 +
  util/gles_loader_autogen.cpp                  |  58 ++
  util/gles_loader_autogen.h                    |  23 +
- 62 files changed, 2460 insertions(+), 179 deletions(-)
+ 61 files changed, 2459 insertions(+), 178 deletions(-)
 
 diff --git a/include/GLES2/gl2ext_explicit_context_autogen.inc b/include/GLES2/gl2ext_explicit_context_autogen.inc
 index 75f663a00..1fe03d2f3 100644
@@ -297,18 +296,6 @@ index 640edd5f7..a547ee83b 100644
    "src/libANGLE/gl_enum_utils_autogen.cpp":
      "3178466fb9ef26a3349fe59a76295dc3",
    "src/libANGLE/gl_enum_utils_autogen.h":
-diff --git a/scripts/code_generation_hashes/Vulkan_mandatory_format_support_table.json b/scripts/code_generation_hashes/Vulkan_mandatory_format_support_table.json
-index ff5e54398..2eb03b501 100644
---- a/scripts/code_generation_hashes/Vulkan_mandatory_format_support_table.json
-+++ b/scripts/code_generation_hashes/Vulkan_mandatory_format_support_table.json
-@@ -8,5 +8,5 @@
-   "src/libANGLE/renderer/vulkan/vk_mandatory_format_support_table_autogen.cpp":
-     "5f691ffce5ea540f9835a715896619ca",
-   "third_party/vulkan-headers/src/registry/vk.xml":
--    "835ea353c9ddafbf772c407d46994fb8"
-+    "85ae10e58a369a6e40f0f403104253cd"
- }
-\ No newline at end of file
 diff --git a/scripts/code_generation_hashes/proc_table.json b/scripts/code_generation_hashes/proc_table.json
 index d3a453173..7c5c78b01 100644
 --- a/scripts/code_generation_hashes/proc_table.json
