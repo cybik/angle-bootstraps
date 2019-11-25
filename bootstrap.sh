@@ -26,5 +26,5 @@ mkdir third_party/vulkan-headers/src/include/ggp_c
 cat > third_party/vulkan-headers/src/include/ggp_c/vulkan_types.h << EOF
 typedef uint64_t GgpFrameToken;
 typedef uint32_t GgpStreamDescriptor;
-static const uint32_t kGgpPrimaryStreamDescriptor = 1;
+static const GgpStreamDescriptor kGgpPrimaryStreamDescriptor = 1;
 EOF
