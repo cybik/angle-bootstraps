@@ -1,4 +1,4 @@
-From b6ea0f5f30c2fb17319e0f21da63da26b67c0788 Mon Sep 17 00:00:00 2001
+From 537474f4d30428e2992b80c17841963011c26225 Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Thu, 21 Nov 2019 11:37:17 -0500
 Subject: [PATCH] Implement BaseVertex draw calls for Vulkan, OpenGL, NULL
@@ -12,12 +12,14 @@ This adds support for the following functions:
 
 Bug: angleproject:3582
 Bug: angleproject:3402
+Bug: angleproject:4166
 Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
 ---
  .../GLES2/gl2ext_explicit_context_autogen.inc |  14 +
  .../GL_EGL_WGL_loader.json                    |   6 +-
  .../GL_EGL_entry_points.json                  |  46 +-
  .../GLenum_value_to_string_map.json           |   2 +-
+ ...Vulkan_mandatory_format_support_table.json |   2 +-
  .../code_generation_hashes/proc_table.json    |   4 +-
  scripts/entry_point_packed_gl_enums.json      |  16 +
  scripts/registry_xml.py                       |   2 +
@@ -46,7 +48,7 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  src/libANGLE/renderer/gl/ContextGL.h          |  21 +
  src/libANGLE/renderer/gl/renderergl_utils.cpp |  10 +
  src/libANGLE/renderer/metal/ContextMtl.h      |  21 +
- src/libANGLE/renderer/metal/ContextMtl.mm     |  36 ++
+ src/libANGLE/renderer/metal/ContextMtl.mm     |  41 ++
  src/libANGLE/renderer/null/ContextNULL.cpp    |  33 ++
  src/libANGLE/renderer/null/ContextNULL.h      |  21 +
  src/libANGLE/renderer/vulkan/ContextVk.cpp    |  66 ++-
@@ -75,7 +77,7 @@ Change-Id: I83770f62e3a918c0965fd4ca8c7d9e598b8b4154
  .../deqp_gles31_test_expectations.txt         |   3 +
  util/gles_loader_autogen.cpp                  |  58 ++
  util/gles_loader_autogen.h                    |  23 +
- 61 files changed, 2454 insertions(+), 178 deletions(-)
+ 62 files changed, 2460 insertions(+), 179 deletions(-)
 
 diff --git a/include/GLES2/gl2ext_explicit_context_autogen.inc b/include/GLES2/gl2ext_explicit_context_autogen.inc
 index 75f663a00..1fe03d2f3 100644
@@ -295,6 +297,18 @@ index 640edd5f7..a547ee83b 100644
    "src/libANGLE/gl_enum_utils_autogen.cpp":
      "3178466fb9ef26a3349fe59a76295dc3",
    "src/libANGLE/gl_enum_utils_autogen.h":
+diff --git a/scripts/code_generation_hashes/Vulkan_mandatory_format_support_table.json b/scripts/code_generation_hashes/Vulkan_mandatory_format_support_table.json
+index ff5e54398..2eb03b501 100644
+--- a/scripts/code_generation_hashes/Vulkan_mandatory_format_support_table.json
++++ b/scripts/code_generation_hashes/Vulkan_mandatory_format_support_table.json
+@@ -8,5 +8,5 @@
+   "src/libANGLE/renderer/vulkan/vk_mandatory_format_support_table_autogen.cpp":
+     "5f691ffce5ea540f9835a715896619ca",
+   "third_party/vulkan-headers/src/registry/vk.xml":
+-    "835ea353c9ddafbf772c407d46994fb8"
++    "85ae10e58a369a6e40f0f403104253cd"
+ }
+\ No newline at end of file
 diff --git a/scripts/code_generation_hashes/proc_table.json b/scripts/code_generation_hashes/proc_table.json
 index d3a453173..7c5c78b01 100644
 --- a/scripts/code_generation_hashes/proc_table.json
@@ -1893,7 +1907,7 @@ index d9b635ef4..8b652fa9c 100644
      // Expose this extension only when we support the formats or we're running on top of a native
      // ES driver.
 diff --git a/src/libANGLE/renderer/metal/ContextMtl.h b/src/libANGLE/renderer/metal/ContextMtl.h
-index a8738e7f5..e4fe2504a 100644
+index 6ae3e543a..2202ba1ee 100644
 --- a/src/libANGLE/renderer/metal/ContextMtl.h
 +++ b/src/libANGLE/renderer/metal/ContextMtl.h
 @@ -64,12 +64,25 @@ class ContextMtl : public ContextImpl, public mtl::Context
@@ -1938,13 +1952,13 @@ index a8738e7f5..e4fe2504a 100644
                                       gl::PrimitiveMode mode,
                                       const void *indirect) override;
 diff --git a/src/libANGLE/renderer/metal/ContextMtl.mm b/src/libANGLE/renderer/metal/ContextMtl.mm
-index 726f9ece4..cba88e205 100644
+index cdea4c218..84a2c0b19 100644
 --- a/src/libANGLE/renderer/metal/ContextMtl.mm
 +++ b/src/libANGLE/renderer/metal/ContextMtl.mm
-@@ -302,6 +302,17 @@ angle::Result ContextMtl::drawElements(const gl::Context *context,
- 
-     return angle::Result::Continue;
+@@ -364,6 +364,18 @@ angle::Result ContextMtl::drawElements(const gl::Context *context,
+     return drawElementsImpl(context, mode, count, type, indices, 0);
  }
+ 
 +angle::Result ContextMtl::drawElementsBaseVertex(const gl::Context *context,
 +                                                 gl::PrimitiveMode mode,
 +                                                 GLsizei count,
@@ -1956,13 +1970,14 @@ index 726f9ece4..cba88e205 100644
 +    UNIMPLEMENTED();
 +    return angle::Result::Stop;
 +}
++
  angle::Result ContextMtl::drawElementsInstanced(const gl::Context *context,
                                                  gl::PrimitiveMode mode,
                                                  GLsizei count,
-@@ -313,6 +324,18 @@ angle::Result ContextMtl::drawElementsInstanced(const gl::Context *context,
-     UNIMPLEMENTED();
-     return angle::Result::Stop;
+@@ -378,6 +390,19 @@ angle::Result ContextMtl::drawElementsInstanced(const gl::Context *context,
+     return drawElementsImpl(context, mode, count, type, indices, instanceCount);
  }
+ 
 +angle::Result ContextMtl::drawElementsInstancedBaseVertex(const gl::Context *context,
 +                                                          gl::PrimitiveMode mode,
 +                                                          GLsizei count,
@@ -1975,13 +1990,23 @@ index 726f9ece4..cba88e205 100644
 +    UNIMPLEMENTED();
 +    return angle::Result::Stop;
 +}
++
  angle::Result ContextMtl::drawElementsInstancedBaseVertexBaseInstance(const gl::Context *context,
                                                                        gl::PrimitiveMode mode,
                                                                        GLsizei count,
-@@ -337,6 +360,19 @@ angle::Result ContextMtl::drawRangeElements(const gl::Context *context,
+@@ -390,6 +415,7 @@ angle::Result ContextMtl::drawElementsInstancedBaseVertexBaseInstance(const gl::
      UNIMPLEMENTED();
      return angle::Result::Stop;
  }
++
+ angle::Result ContextMtl::drawRangeElements(const gl::Context *context,
+                                             gl::PrimitiveMode mode,
+                                             GLuint start,
+@@ -402,6 +428,21 @@ angle::Result ContextMtl::drawRangeElements(const gl::Context *context,
+     UNIMPLEMENTED();
+     return angle::Result::Stop;
+ }
++
 +angle::Result ContextMtl::drawRangeElementsBaseVertex(const gl::Context *context,
 +                                                      gl::PrimitiveMode mode,
 +                                                      GLuint start,
@@ -1995,6 +2020,7 @@ index 726f9ece4..cba88e205 100644
 +    UNIMPLEMENTED();
 +    return angle::Result::Stop;
 +}
++
  angle::Result ContextMtl::drawArraysIndirect(const gl::Context *context,
                                               gl::PrimitiveMode mode,
                                               const void *indirect)
@@ -4226,7 +4252,7 @@ index bee7b7610..c88ddc457 100644
 +size_t g_numProcs = 1435;
  }  // namespace egl
 diff --git a/src/tests/deqp_support/deqp_gles31_test_expectations.txt b/src/tests/deqp_support/deqp_gles31_test_expectations.txt
-index 4fcbaa37b..d933cb192 100644
+index 4fcbaa37b..d525f0a99 100644
 --- a/src/tests/deqp_support/deqp_gles31_test_expectations.txt
 +++ b/src/tests/deqp_support/deqp_gles31_test_expectations.txt
 @@ -649,6 +649,9 @@
@@ -4234,7 +4260,7 @@ index 4fcbaa37b..d933cb192 100644
  3683 VULKAN PIXEL2ORXL : dEQP-GLES31.functional.stencil_texturing.misc.compare_mode_effect = FAIL
  
 +// Instanced lines with base vertex:
-+3582 VULKAN PIXEL2ORXL : dEQP-GLES31.functional.draw_base_vertex.draw_elements_instanced_base_vertex.lines.instanced_attributes = FAIL
++4166 VULKAN PIXEL2ORXL : dEQP-GLES31.functional.draw_base_vertex.draw_elements_instanced_base_vertex.lines.instanced_attributes = FAIL
 +
  // Need to support non-color when staging image updates
  4080 ANDROID VULKAN : dEQP-GLES31.functional.stencil_texturing.misc.base_level = SKIP
