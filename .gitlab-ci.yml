@@ -9,6 +9,7 @@ stages:
     paths:
       - angle/out/*/lib*.so
       - angle/out/*/args.gn
+      - angle/include
   before_script:
     - ./prep-gitlab.sh
     
@@ -17,7 +18,7 @@ stages:
   <<: *build_definition
   script: |
     echo "Buildstrapping for ${TARGET}";
-    ./buildstrap.sh ${TARGET};
+    ./buildstrap.sh ${TARGET} linux;
 
 .build_def_ggp: &build_definition_ggp
   <<: *build_definition
