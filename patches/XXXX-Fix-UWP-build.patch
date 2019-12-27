@@ -1,0 +1,38 @@
+From d3cc1d32aa759df65076590cacc132e27700623a Mon Sep 17 00:00:00 2001
+From: Ethan Lee <flibitijibibo@gmail.com>
+Date: Fri, 27 Dec 2019 14:46:50 -0500
+Subject: [PATCH] Fix UWP build
+
+Change-Id: Ifcbb6fe51ee2df6baf86a308de74bab640ded834
+---
+ src/libANGLE/renderer/d3d/d3d11/renderer11_utils.cpp | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/src/libANGLE/renderer/d3d/d3d11/renderer11_utils.cpp b/src/libANGLE/renderer/d3d/d3d11/renderer11_utils.cpp
+index 4f9e52ca3..3f86c42ba 100644
+--- a/src/libANGLE/renderer/d3d/d3d11/renderer11_utils.cpp
++++ b/src/libANGLE/renderer/d3d/d3d11/renderer11_utils.cpp
+@@ -2364,6 +2364,11 @@ void InitializeFeatures(const Renderer11DeviceCaps &deviceCaps,
+     bool isIvyBridge               = false;
+     bool isAMD                     = IsAMD(adapterDesc.VendorId);
+     bool isFeatureLevel9_3         = (deviceCaps.featureLevel <= D3D_FEATURE_LEVEL_9_3);
++#if defined(ANGLE_ENABLE_WINDOWS_UWP)
++    bool isWin10                   = true;
++#else
++    bool isWin10                   = IsWindows10OrGreater();
++#endif
+     IntelDriverVersion capsVersion = IntelDriverVersion(0);
+     if (isIntel)
+     {
+@@ -2449,7 +2454,7 @@ void InitializeFeatures(const Renderer11DeviceCaps &deviceCaps,
+     // This is targeted to work around a bug in AMD D3D driver that fails to allocate
+     // ShaderResourceView for StructuredBuffer.
+     ANGLE_FEATURE_CONDITION(features, dontTranslateUniformBlockToStructuredBuffer,
+-                            isAMD && !IsWindows10OrGreater());
++                            isAMD && !isWin10);
+ 
+     // Call platform hooks for testing overrides.
+     auto *platform = ANGLEPlatformCurrent();
+-- 
+2.21.0
+
