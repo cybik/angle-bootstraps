@@ -1,0 +1,35 @@
+From 8248dae9000688d8ae5ffc915642c534d486b23d Mon Sep 17 00:00:00 2001
+From: Ethan Lee <flibitijibibo@gmail.com>
+Date: Tue, 31 Dec 2019 01:37:49 -0500
+Subject: [PATCH] Ignore vulkan-loader dep for GGP
+
+Change-Id: If551d96941bc4aa487514ba3d8f793dcf45131e9
+---
+ src/libANGLE/renderer/vulkan/BUILD.gn | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/libANGLE/renderer/vulkan/BUILD.gn b/src/libANGLE/renderer/vulkan/BUILD.gn
+index ed320f50b..08fe7ff0c 100644
+--- a/src/libANGLE/renderer/vulkan/BUILD.gn
++++ b/src/libANGLE/renderer/vulkan/BUILD.gn
+@@ -169,7 +169,7 @@ group("angle_vulkan_entry_points") {
+       "//third_party/fuchsia-sdk:vulkan_base",
+       "//third_party/fuchsia-sdk/sdk:vulkan",
+     ]
+-  } else if (!is_android) {
++  } else if (!is_android && !is_ggp) {
+     data_deps = [
+       "$angle_root/third_party/vulkan-loader/src:libvulkan",
+     ]
+@@ -220,7 +220,7 @@ angle_source_set("angle_vulkan_backend") {
+   import("vk_internal_shaders_autogen.gni")
+   sources += angle_vulkan_internal_shaders
+ 
+-  if (!is_android && !is_fuchsia) {
++  if (!is_android && !is_fuchsia && !is_ggp) {
+     data_deps += [
+       "$angle_root/third_party/vulkan-loader/src:libvulkan",
+       "$angle_root/third_party/vulkan-tools/src:VkICD_mock_icd",
+-- 
+2.21.0
+
