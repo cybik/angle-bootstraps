@@ -1,0 +1,82 @@
+From a4737d043d91443d47f184ec0406cffea4f55014 Mon Sep 17 00:00:00 2001
+From: Ethan Lee <flibitijibibo@gmail.com>
+Date: Thu, 2 Jan 2020 14:19:44 -0500
+Subject: [PATCH] Vulkan: Add support for swap_control_tear behavior with
+ FIFO_RELAXED
+
+Change-Id: I67dced2da51abf68d146674bb88d026320d682e1
+---
+ src/libANGLE/renderer/vulkan/SurfaceVk.cpp    | 23 ++++++++++++++++---
+ .../renderer/vulkan/vk_caps_utils.cpp         |  2 +-
+ 2 files changed, 21 insertions(+), 4 deletions(-)
+
+diff --git a/src/libANGLE/renderer/vulkan/SurfaceVk.cpp b/src/libANGLE/renderer/vulkan/SurfaceVk.cpp
+index bdc76b33c..490a9c2bc 100644
+--- a/src/libANGLE/renderer/vulkan/SurfaceVk.cpp
++++ b/src/libANGLE/renderer/vulkan/SurfaceVk.cpp
+@@ -55,9 +55,13 @@ VkPresentModeKHR GetDesiredPresentMode(const std::vector<VkPresentModeKHR> &pres
+     // - Immediate is similar to single-buffering.
+     //
+     // If neither is supported, we fallback to FIFO.
++    //
++    // There is also a special case for -1, which is a request for swap_control_tear behavior.
++    // If FIFO Relaxed is available, swap_control_tear is possible, otherwise fall back to FIFO.
+ 
+-    bool mailboxAvailable   = false;
+-    bool immediateAvailable = false;
++    bool mailboxAvailable     = false;
++    bool immediateAvailable   = false;
++    bool fifoRelaxedAvailable = false;
+ 
+     for (VkPresentModeKHR presentMode : presentModes)
+     {
+@@ -69,11 +73,24 @@ VkPresentModeKHR GetDesiredPresentMode(const std::vector<VkPresentModeKHR> &pres
+             case VK_PRESENT_MODE_IMMEDIATE_KHR:
+                 immediateAvailable = true;
+                 break;
++            case VK_PRESENT_MODE_FIFO_RELAXED_KHR:
++                fifoRelaxedAvailable = true;
++                break;
+             default:
+                 break;
+         }
+     }
+ 
++    // Application wants v-sync at minimum, but would like to tear if performance drops!
++    if (interval < 0)
++    {
++        if (fifoRelaxedAvailable)
++        {
++            return VK_PRESENT_MODE_FIFO_RELAXED_KHR;
++        }
++        return VK_PRESENT_MODE_FIFO_KHR;
++    }
++
+     if (immediateAvailable)
+     {
+         return VK_PRESENT_MODE_IMMEDIATE_KHR;
+@@ -1267,7 +1284,7 @@ void WindowSurfaceVk::setSwapInterval(EGLint interval)
+ {
+     const EGLint minSwapInterval = mState.config->minSwapInterval;
+     const EGLint maxSwapInterval = mState.config->maxSwapInterval;
+-    ASSERT(minSwapInterval == 0 || minSwapInterval == 1);
++    ASSERT(minSwapInterval == -1 || minSwapInterval == 0 || minSwapInterval == 1);
+     ASSERT(maxSwapInterval == 0 || maxSwapInterval == 1);
+ 
+     interval = gl::clamp(interval, minSwapInterval, maxSwapInterval);
+diff --git a/src/libANGLE/renderer/vulkan/vk_caps_utils.cpp b/src/libANGLE/renderer/vulkan/vk_caps_utils.cpp
+index 34448ed1d..5cf07a9f6 100644
+--- a/src/libANGLE/renderer/vulkan/vk_caps_utils.cpp
++++ b/src/libANGLE/renderer/vulkan/vk_caps_utils.cpp
+@@ -568,7 +568,7 @@ egl::Config GenerateDefaultConfig(const RendererVk *renderer,
+     config.maxPBufferHeight   = physicalDeviceProperties.limits.maxImageDimension2D;
+     config.maxPBufferPixels   = ComputeMaximumPBufferPixels(physicalDeviceProperties);
+     config.maxSwapInterval    = 1;
+-    config.minSwapInterval    = 0;
++    config.minSwapInterval    = -1;
+     config.nativeRenderable   = EGL_TRUE;
+     config.nativeVisualID     = 0;
+     config.nativeVisualType   = EGL_NONE;
+-- 
+2.21.0
+
