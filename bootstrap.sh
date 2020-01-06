@@ -17,7 +17,6 @@ sudo ./build/install-build-deps.sh
 
 # Apply custom patches for GGP public builds
 git apply $BUILDROOT/patches/0001-HACK-Force-__ggp__-define.patch
-git apply $BUILDROOT/patches/XXXX-Fix-GGP-build.patch
 git apply $BUILDROOT/patches/XXXX-Ignore-vulkan-loader-dep-for-GGP.patch
 git apply $BUILDROOT/patches/XXXX-Vulkan-Add-support-for-swap_control_tear-behavior-wi.patch
 
