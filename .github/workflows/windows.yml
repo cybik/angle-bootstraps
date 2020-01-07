@@ -76,7 +76,7 @@ jobs:
           $env:DEPOT_TOOLS_WIN_TOOLCHAIN=0
           $env:Path = "$pwd\depot_tools;" + $env:Path
           cd angle
-          gn gen out/Build_${{ matrix.arch }} --args='is_clang=true is_debug=false use_custom_libcxx=true is_component_build=false target_cpu=\"${{ matrix.cpu }}\" angle_enable_swiftshader=true'
+          gn gen out/Build_${{ matrix.arch }} --args='is_clang=true is_debug=false use_custom_libcxx=true is_component_build=false target_cpu=\"${{ matrix.cpu }}\" angle_enable_swiftshader=false'
       - name: Discord message (2)
         shell: pwsh
         run: |
