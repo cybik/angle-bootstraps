@@ -50,13 +50,13 @@ jobs:
           cp -r angle/include artifacts;
           cp  angle/out/${{ matrix.variant }}/args.gn artifacts;
           cd artifacts/;
-          tar -cf ../${{ matrix.variant }}.tar *;
-          gzip ../${{ matrix.variant }}.tar;
+          mkdir -p ../arch;
+          tar -cf ../arch/${{ matrix.variant }}.tar *;
       - name: Archive ANGLE ${{ matrix.variant }} Build Artifacts for ${{ matrix.target }} on ${{ matrix.os }}  
         uses: actions/upload-artifact@master
         with:
           name: Artifacts for ${{ matrix.target }} ${{ matrix.variant }} on ${{ matrix.os }}
-          path: artifacts
+          path: artifacts/arch
       - name: Discord message (4)
         run: |
           curl -X POST -H "Content-Type: application/json" \
