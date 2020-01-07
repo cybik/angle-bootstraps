@@ -94,8 +94,6 @@ jobs:
           cd angle
           autoninja -C out\Build_${{ matrix.arch }} libANGLE
           autoninja -C out\Build_${{ matrix.arch }} libEGL
-          autoninja -C out\Build_${{ matrix.arch }} libGL
-          autoninja -C out\Build_${{ matrix.arch }} libGLESv1_CM 
           autoninja -C out\Build_${{ matrix.arch }} libGLESv2
       - name: Discord message (3)
         shell: pwsh

@@ -87,7 +87,6 @@ jobs:
           cd angle
           autoninja -C out\Build_UWP libANGLE
           autoninja -C out\Build_UWP libEGL
-          autoninja -C out\Build_UWP libGLESv1_CM 
           autoninja -C out\Build_UWP libGLESv2
       - name: Discord message (3)
         shell: pwsh
