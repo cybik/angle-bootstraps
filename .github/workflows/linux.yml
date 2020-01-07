@@ -44,7 +44,9 @@ jobs:
       - name: Compress ${{ matrix.variant }} artifacts for ${{ matrix.target }} on ${{ matrix.os }}  
         run: |
           mkdir -p artifacts/lib;
-          cp -r angle/out/${{ matrix.variant }}/*.so artifacts/lib;
+          cp angle/out/${{ matrix.variant }}/libEGL.so.1 artifacts/lib;
+          cp angle/out/${{ matrix.variant }}/libGLESv2.so.2 artifacts/lib;
+          ln -s libGLESv2.so.2 artifacts/lib/libGLESv2.so;
           cp -r angle/include artifacts;
           cp  angle/out/${{ matrix.variant }}/args.gn artifacts;
           cd artifacts/;
