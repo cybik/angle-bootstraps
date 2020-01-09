@@ -19,7 +19,7 @@ sudo ./build/install-build-deps.sh
 git apply $BUILDROOT/patches/0001-HACK-Force-__ggp__-define.patch
 git apply $BUILDROOT/patches/XXXX-Ignore-vulkan-loader-dep-for-GGP.patch
 git apply $BUILDROOT/patches/XXXX-Vulkan-Add-support-for-swap_control_tear-behavior-wi.patch
-git apply $BUILDROOT/patches/XXXX-Temp-hack-to-test-a-theory.patch
+git apply $BUILDROOT/patches/7c7a7cf.diff
 
 # This header has to be in Vulkan-Headers!
 mkdir third_party/vulkan-headers/src/include/ggp_c
