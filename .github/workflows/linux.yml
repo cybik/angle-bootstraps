@@ -2,9 +2,8 @@ name: Matrixed Linux Build
 
 on: 
   push:
-    branches: 
+    branches:
       - master
-      - 16
   schedule:
     - cron: "0 0 * * *"
 
@@ -13,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-18.04, ubuntu-16.04]
+        os: [ubuntu-16.04]
         target: [ggp, linux]
         variant: [Release]
     runs-on: ${{ matrix.os }}
