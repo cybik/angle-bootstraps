@@ -4,6 +4,7 @@ on:
   push:
     branches: 
       - master
+      - 16
   schedule:
     - cron: "0 0 * * *"
 
