@@ -2,7 +2,7 @@ name: Matrixed Linux Build
 
 on: 
   push:
-    branches: 
+    branches:
       - master
   schedule:
     - cron: "0 0 * * *"
@@ -12,12 +12,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-18.04]
+        os: [ubuntu-16.04]
         target: [ggp, linux]
         variant: [Release]
     runs-on: ${{ matrix.os }}
     name: ${{ matrix.target }} - ${{ matrix.variant }} on ${{ matrix.os }}
     steps:
+      - name: Additional ninja repo for 16.04
+        if: startsWith(matrix.os, 'ubuntu-16.04')
+        run: |
+          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv D1995A6F6785DDF039DA309CF8A2C7E806DF5B5E
+          sudo add-apt-repository -y 'deb http://ppa.launchpad.net/mstipicevic/ninja-build-1-7-2/ubuntu trusty main'
+          sudo apt-get update
       - name: Discord message (1)
         run: |
           curl -X POST -H "Content-Type: application/json" \
