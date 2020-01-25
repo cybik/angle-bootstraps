@@ -1,17 +1,22 @@
-From c3c7dc93f3a3b2791cf5908cbad5de0145f4c7b1 Mon Sep 17 00:00:00 2001
+From 5cfd7874403dcebe77ad2cdf4f7f237041e93d8b Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
-Date: Fri, 15 Nov 2019 12:31:44 -0500
-Subject: [PATCH] HACK: Force __ggp__ define
+Date: Fri, 24 Jan 2020 22:41:35 -0500
+Subject: [PATCH] For GGP builds, define __ggp__ manually.
 
+Unlike other platforms' definitions, the GGP SDK expects the project files to
+define this instead of having the compiler define it for us.
+
+Bug: angleproject:4237
+Change-Id: I8f10311fdff785a74c5e49fc53a512f1c050bff3
 ---
  BUILD.gn | 4 ++++
  1 file changed, 4 insertions(+)
 
 diff --git a/BUILD.gn b/BUILD.gn
-index d930babeb..d2368611f 100644
+index 23fbaebcc..6b4164ad0 100644
 --- a/BUILD.gn
 +++ b/BUILD.gn
-@@ -110,6 +110,10 @@ config("internal_config") {
+@@ -111,6 +111,10 @@ config("internal_config") {
    if (is_chromeos) {
      defines += [ "ANGLE_PLATFORM_CHROMEOS" ]
    }
