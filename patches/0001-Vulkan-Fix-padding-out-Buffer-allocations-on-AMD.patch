@@ -1,0 +1,104 @@
+From 31d1e0be124d4a04f30049b8f5bea7c37cb38820 Mon Sep 17 00:00:00 2001
+From: Jamie Madill <jmadill@chromium.org>
+Date: Mon, 24 Feb 2020 17:15:13 -0500
+Subject: [PATCH] Vulkan: Fix padding out Buffer allocations on AMD.
+
+We would often pad incorrectly given the constraints of the max stride.
+We shouldn't really be rounding up the buffer size, but we should
+instead be adding the max alignment size to the end of the buffer.
+
+Bug: angleproject:4428
+Change-Id: Id2afc572c85985548a18f60b42cdc388d83d5c4c
+---
+ include/platform/FeaturesVk.h               | 34 ++++++++++-----------
+ src/libANGLE/renderer/vulkan/RendererVk.cpp |  6 +---
+ src/libANGLE/renderer/vulkan/vk_helpers.cpp |  8 ++---
+ 3 files changed, 21 insertions(+), 27 deletions(-)
+
+diff --git a/include/platform/FeaturesVk.h b/include/platform/FeaturesVk.h
+index 0535699fa..6da49122a 100644
+--- a/include/platform/FeaturesVk.h
++++ b/include/platform/FeaturesVk.h
+@@ -208,24 +208,22 @@ struct FeaturesVk : FeatureSetBase
+         "RewriteStructSamplers behavior, which produces fewer.",
+         &members, "http://anglebug.com/2703"};
+ 
+-    // If the robustBufferAccess feature is enabled, Vulkan considers vertex attribute accesses only
+-    // valid up to the last multiple of stride.  If a vertex's attribute range is such that it falls
+-    // within the range of the buffer, but beyond the last multiple of stride, the driver is allowed
+-    // to either read that range from the buffer anyway, or to return (0, 0, 0, 1).  Most drivers
+-    // implement the former, while amdvlk on Linux and AMD's windows driver implement the latter.
+-    // For the latter, this workaround limits GL_MAX_VERTEX_ATTRIB_STRIDE to a reasonable value, and
+-    // rounds up every buffer allocation size to be a multiple of that.
+-    // http://anglebug.com/2514
+-    Feature roundUpBuffersToMaxVertexAttribStride = {
+-        "round_up_buffers_to_max_vertex_attrib_stride", FeatureCategory::VulkanWorkarounds,
+-        "If the robustBufferAccess feature is enabled, Vulkan considers vertex attribute accesses "
+-        "only valid up to the last multiple of stride. If a vertex's attribute range is such that "
+-        "it falls within the range of the buffer, but beyond the last multiple of stride, the "
+-        "driver is allowed to either read that range from the buffer anyway, or to return "
+-        "(0, 0, 0, 1). Most drivers implement the former, while some drivers the latter. For the "
+-        "latter, this workaround limits GL_MAX_VERTEX_ATTRIB_STRIDE to a reasonable value, and "
+-        "rounds up every buffer allocation size to be a multiple of that.",
+-        &members, "http://anglebug.com/2848"};
++    // Vulkan considers vertex attribute accesses to count up to the last multiple of the stride.
++    // This additional access supports AMD's robust buffer access implementation.
++    // AMDVLK in particular will return incorrect values when the vertex access extends into the
++    // range that would be the stride padding and the buffer is too small.
++    // This workaround limits GL_MAX_VERTEX_ATTRIB_STRIDE to a reasonable value and pads out
++    // every buffer allocation size to be large enough to support a maximum vertex stride.
++    // http://anglebug.com/4428
++    Feature padBuffersToMaxVertexAttribStride = {
++        "pad_buffers_to_max_vertex_attrib_stride", FeatureCategory::VulkanWorkarounds,
++        "Vulkan considers vertex attribute accesses to count up to the last multiple of the "
++        "stride. This additional access supports AMD's robust buffer access implementation. "
++        "AMDVLK in particular will return incorrect values when the vertex access extends into "
++        "the range that would be the stride padding and the buffer is too small. "
++        "This workaround limits GL_MAX_VERTEX_ATTRIB_STRIDE to a maximum value and "
++        "pads up every buffer allocation size to be a multiple of the maximum stride.",
++        &members, "http://anglebug.com/4428"};
+ 
+     // Whether the VkDevice supports the VK_EXT_swapchain_colorspace extension
+     // http://anglebug.com/2514
+diff --git a/src/libANGLE/renderer/vulkan/RendererVk.cpp b/src/libANGLE/renderer/vulkan/RendererVk.cpp
+index ab712f524..f09bcbb09 100644
+--- a/src/libANGLE/renderer/vulkan/RendererVk.cpp
++++ b/src/libANGLE/renderer/vulkan/RendererVk.cpp
+@@ -1620,11 +1620,7 @@ void RendererVk::initFeatures(DisplayVk *displayVk, const ExtensionNameList &dev
+     // Disabled on AMD/windows due to buggy behavior.
+     ANGLE_FEATURE_CONDITION((&mFeatures), disallowSeamfulCubeMapEmulation, IsWindows() && isAMD);
+ 
+-    // Round up buffer sizes in the presence of robustBufferAccess to emulate GLES behavior when
+-    // vertex attributes are fetched from beyond the last multiple of the stride.  Currently, only
+-    // AMD is known to refuse reading these attributes.
+-    ANGLE_FEATURE_CONDITION((&mFeatures), roundUpBuffersToMaxVertexAttribStride,
+-                            isAMD && mPhysicalDeviceFeatures.robustBufferAccess);
++    ANGLE_FEATURE_CONDITION((&mFeatures), padBuffersToMaxVertexAttribStride, isAMD);
+     mMaxVertexAttribStride = std::min(static_cast<uint32_t>(gl::limits::kMaxVertexAttribStride),
+                                       mPhysicalDeviceProperties.limits.maxVertexInputBindingStride);
+ 
+diff --git a/src/libANGLE/renderer/vulkan/vk_helpers.cpp b/src/libANGLE/renderer/vulkan/vk_helpers.cpp
+index 4d4949db1..1d7ddcea1 100644
+--- a/src/libANGLE/renderer/vulkan/vk_helpers.cpp
++++ b/src/libANGLE/renderer/vulkan/vk_helpers.cpp
+@@ -1466,13 +1466,13 @@ angle::Result BufferHelper::init(ContextVk *contextVk,
+     VkBufferCreateInfo modifiedCreateInfo;
+     const VkBufferCreateInfo *createInfo = &requestedCreateInfo;
+ 
+-    if (renderer->getFeatures().roundUpBuffersToMaxVertexAttribStride.enabled)
++    if (renderer->getFeatures().padBuffersToMaxVertexAttribStride.enabled)
+     {
+         const VkDeviceSize maxVertexAttribStride = renderer->getMaxVertexAttribStride();
+         ASSERT(maxVertexAttribStride);
+-        modifiedCreateInfo      = requestedCreateInfo;
+-        modifiedCreateInfo.size = roundUp(modifiedCreateInfo.size, maxVertexAttribStride);
+-        createInfo              = &modifiedCreateInfo;
++        modifiedCreateInfo = requestedCreateInfo;
++        modifiedCreateInfo.size += maxVertexAttribStride;
++        createInfo = &modifiedCreateInfo;
+     }
+ 
+     ANGLE_VK_TRY(contextVk, mBuffer.init(contextVk->getDevice(), *createInfo));
+-- 
+2.21.0
+

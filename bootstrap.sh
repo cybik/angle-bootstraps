@@ -17,6 +17,7 @@ sudo ./build/install-build-deps.sh
 
 # Apply custom patches for GGP public builds
 git apply $BUILDROOT/patches/XXXX-Vulkan-Add-support-for-swap_control_tear-behavior-wi.patch
+git apply $BUILDROOT/patches/0001-Vulkan-Fix-padding-out-Buffer-allocations-on-AMD.patch
 
 # This header has to be in Vulkan-Headers!
 mkdir third_party/vulkan-headers/src/include/ggp_c
