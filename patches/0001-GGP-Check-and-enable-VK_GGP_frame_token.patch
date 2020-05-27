@@ -1,0 +1,79 @@
+From 2c8a19456a08e64092a86f24e3ab33a9f8e6ee21 Mon Sep 17 00:00:00 2001
+From: Ethan Lee <flibitijibibo@gmail.com>
+Date: Wed, 27 May 2020 16:23:57 -0400
+Subject: [PATCH] GGP: Check and enable VK_GGP_frame_token
+
+Bug: angleproject:4668
+Change-Id: I9ecbdf37e206cb6eb93699091bbff70ad898040f
+---
+ include/platform/FeaturesVk.h               |  6 ++++++
+ src/libANGLE/renderer/vulkan/DisplayVk.cpp  |  2 +-
+ src/libANGLE/renderer/vulkan/RendererVk.cpp | 15 +++++++++++++++
+ 3 files changed, 22 insertions(+), 1 deletion(-)
+
+diff --git a/include/platform/FeaturesVk.h b/include/platform/FeaturesVk.h
+index 28496094b..fedca4088 100644
+--- a/include/platform/FeaturesVk.h
++++ b/include/platform/FeaturesVk.h
+@@ -108,6 +108,12 @@ struct FeaturesVk : FeatureSetBase
+         "VkDevice supports the VK_ANDROID_external_memory_android_hardware_buffer extension",
+         &members};
+ 
++    // Whether the VkDevice supports the VK_GGP_frame_token extension, on which
++    // the EGL_ANGLE_swap_with_frame_token extension can be layered.
++    Feature supportsGGPFrameToken = {"supports_ggp_frame_token", FeatureCategory::VulkanFeatures,
++                                     "VkDevice supports the VK_GGP_frame_token extension",
++                                     &members};
++
+     // Whether the VkDevice supports the VK_KHR_external_memory_fd extension, on which the
+     // GL_EXT_memory_object_fd extension can be layered.
+     Feature supportsExternalMemoryFd = {
+diff --git a/src/libANGLE/renderer/vulkan/DisplayVk.cpp b/src/libANGLE/renderer/vulkan/DisplayVk.cpp
+index c3f8210bb..aa05885e7 100644
+--- a/src/libANGLE/renderer/vulkan/DisplayVk.cpp
++++ b/src/libANGLE/renderer/vulkan/DisplayVk.cpp
+@@ -228,7 +228,7 @@ void DisplayVk::generateExtensions(egl::DisplayExtensions *outExtensions) const
+ 
+ #if defined(ANGLE_PLATFORM_GGP)
+     outExtensions->ggpStreamDescriptor = true;
+-    outExtensions->swapWithFrameToken  = true;
++    outExtensions->swapWithFrameToken  = getRenderer()->getFeatures().supportsGGPFrameToken.enabled;
+ #endif  // defined(ANGLE_PLATFORM_GGP)
+ }
+ 
+diff --git a/src/libANGLE/renderer/vulkan/RendererVk.cpp b/src/libANGLE/renderer/vulkan/RendererVk.cpp
+index 1a0ec9199..6245f1bd6 100644
+--- a/src/libANGLE/renderer/vulkan/RendererVk.cpp
++++ b/src/libANGLE/renderer/vulkan/RendererVk.cpp
+@@ -1095,6 +1095,15 @@ angle::Result RendererVk::initializeDevice(DisplayVk *displayVk, uint32_t queueF
+     ASSERT(!getFeatures().supportsAndroidHardwareBuffer.enabled);
+ #endif
+ 
++#if defined(ANGLE_PLATFORM_GGP)
++    if (getFeatures().supportsGGPFrameToken.enabled)
++    {
++        enabledDeviceExtensions.push_back(VK_GGP_FRAME_TOKEN_EXTENSION_NAME);
++    }
++#else
++    ASSERT(!getFeatures().supportsGGPFrameToken.enabled);
++#endif
++
+     if (getFeatures().supportsAndroidHardwareBuffer.enabled ||
+         getFeatures().supportsExternalMemoryFd.enabled ||
+         getFeatures().supportsExternalMemoryFuchsia.enabled)
+@@ -1597,6 +1606,12 @@ void RendererVk::initFeatures(DisplayVk *displayVk, const ExtensionNameList &dev
+             ExtensionFound(VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME, deviceExtensionNames));
+ #endif
+ 
++#if defined(ANGLE_PLATFORM_GGP)
++    ANGLE_FEATURE_CONDITION(
++        &mFeatures, supportsGGPFrameToken,
++        ExtensionFound(VK_GGP_FRAME_TOKEN_EXTENSION_NAME, deviceExtensionNames));
++#endif
++
+     ANGLE_FEATURE_CONDITION(
+         &mFeatures, supportsExternalMemoryFd,
+         ExtensionFound(VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME, deviceExtensionNames));
+-- 
+2.26.2
+
