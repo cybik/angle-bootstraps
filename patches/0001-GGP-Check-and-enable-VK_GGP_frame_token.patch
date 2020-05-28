@@ -1,4 +1,4 @@
-From 2c8a19456a08e64092a86f24e3ab33a9f8e6ee21 Mon Sep 17 00:00:00 2001
+From 94deacb0485b203bece1bbef38de2026b5d05805 Mon Sep 17 00:00:00 2001
 From: Ethan Lee <flibitijibibo@gmail.com>
 Date: Wed, 27 May 2020 16:23:57 -0400
 Subject: [PATCH] GGP: Check and enable VK_GGP_frame_token
@@ -8,8 +8,8 @@ Change-Id: I9ecbdf37e206cb6eb93699091bbff70ad898040f
 ---
  include/platform/FeaturesVk.h               |  6 ++++++
  src/libANGLE/renderer/vulkan/DisplayVk.cpp  |  2 +-
- src/libANGLE/renderer/vulkan/RendererVk.cpp | 15 +++++++++++++++
- 3 files changed, 22 insertions(+), 1 deletion(-)
+ src/libANGLE/renderer/vulkan/RendererVk.cpp | 17 +++++++++++++++++
+ 3 files changed, 24 insertions(+), 1 deletion(-)
 
 diff --git a/include/platform/FeaturesVk.h b/include/platform/FeaturesVk.h
 index 28496094b..fedca4088 100644
@@ -42,10 +42,10 @@ index c3f8210bb..aa05885e7 100644
  }
  
 diff --git a/src/libANGLE/renderer/vulkan/RendererVk.cpp b/src/libANGLE/renderer/vulkan/RendererVk.cpp
-index 1a0ec9199..6245f1bd6 100644
+index 1a0ec9199..b122bab54 100644
 --- a/src/libANGLE/renderer/vulkan/RendererVk.cpp
 +++ b/src/libANGLE/renderer/vulkan/RendererVk.cpp
-@@ -1095,6 +1095,15 @@ angle::Result RendererVk::initializeDevice(DisplayVk *displayVk, uint32_t queueF
+@@ -1095,6 +1095,17 @@ angle::Result RendererVk::initializeDevice(DisplayVk *displayVk, uint32_t queueF
      ASSERT(!getFeatures().supportsAndroidHardwareBuffer.enabled);
  #endif
  
@@ -54,6 +54,8 @@ index 1a0ec9199..6245f1bd6 100644
 +    {
 +        enabledDeviceExtensions.push_back(VK_GGP_FRAME_TOKEN_EXTENSION_NAME);
 +    }
++    ANGLE_VK_CHECK(displayVk, getFeatures().supportsGGPFrameToken.enabled,
++                   VK_ERROR_EXTENSION_NOT_PRESENT);
 +#else
 +    ASSERT(!getFeatures().supportsGGPFrameToken.enabled);
 +#endif
@@ -61,7 +63,7 @@ index 1a0ec9199..6245f1bd6 100644
      if (getFeatures().supportsAndroidHardwareBuffer.enabled ||
          getFeatures().supportsExternalMemoryFd.enabled ||
          getFeatures().supportsExternalMemoryFuchsia.enabled)
-@@ -1597,6 +1606,12 @@ void RendererVk::initFeatures(DisplayVk *displayVk, const ExtensionNameList &dev
+@@ -1597,6 +1608,12 @@ void RendererVk::initFeatures(DisplayVk *displayVk, const ExtensionNameList &dev
              ExtensionFound(VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME, deviceExtensionNames));
  #endif
  
